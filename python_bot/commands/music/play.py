@@ -368,8 +368,8 @@ class MusicPlayer(commands.Cog):
         return "رابط مباشر"
     
     @commands.command(
-        name="قائمة",
-        aliases=["queue", "q", "طابور"],
+        name="قائمة_انتظار",
+        aliases=["queue", "q", "طابور", "انتظار"],
         description="عرض قائمة المحتويات"
     )
     async def queue(self, ctx):
