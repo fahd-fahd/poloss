@@ -1,7 +1,0 @@
-{
-  "DEFAULT_PREFIX": "!",
-  "VOICE_PREFIX": "-",
-  "GAMES_PREFIX": "!",
-  "DEFAULT_LANGUAGE": "arabic",
-  "SUPPORTED_LANGUAGES": ["arabic", "english"]
-}
