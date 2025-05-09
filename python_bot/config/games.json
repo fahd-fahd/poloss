@@ -1,0 +1,36 @@
+{
+    "minBet": 10,
+    "maxBet": 10000,
+    "fishingItems": [
+        {"name": "سمكة عادية", "value": 50, "chance": 0.5},
+        {"name": "سمكة نادرة", "value": 150, "chance": 0.3},
+        {"name": "سمكة نادرة جداً", "value": 500, "chance": 0.15},
+        {"name": "كنز", "value": 1000, "chance": 0.05}
+    ],
+    "fishingCooldown": 300,
+    "diceRewards": {
+        "high": 2.0,
+        "low": 2.0,
+        "exact": 6.0
+    },
+    "blackjackSettings": {
+        "blackjackMultiplier": 1.5
+    },
+    "slotsSymbols": [
+        {"symbol": "🍒", "value": 1},
+        {"symbol": "🍊", "value": 2},
+        {"symbol": "🍋", "value": 3},
+        {"symbol": "🍇", "value": 4},
+        {"symbol": "🍉", "value": 5},
+        {"symbol": "🍓", "value": 6},
+        {"symbol": "🍎", "value": 7},
+        {"symbol": "🎰", "value": 8},
+        {"symbol": "💎", "value": 9},
+        {"symbol": "🌟", "value": 10}
+    ],
+    "slotsPayout": {
+        "three_match": 5,
+        "two_match": 2,
+        "jackpot": 10
+    }
+} 

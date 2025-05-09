@@ -2,7 +2,13 @@ from flask import Flask, jsonify, render_template
 import os
 import threading
 import logging
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
+
+# إضافة المسار الحالي إلى مسار البحث ليتمكن من العثور على الحزم
+current_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(current_dir))
 
 # تحميل متغيرات البيئة
 load_dotenv()
@@ -68,22 +74,56 @@ def run_bot():
         if bot_path not in sys.path:
             sys.path.append(bot_path)
         
-        # تشغيل البوت
-        sys.path.insert(0, bot_path)
-        from python_bot.src.main import main
+        # طباعة مسارات البحث للتشخيص
+        logger.info(f"مسارات البحث: {sys.path}")
+        
+        # محاولة استيراد واختبار وجود المكتبات
+        try:
+            # محاولة استيراد الملف المطلوب مباشرة
+            import python_bot.src.main as bot_main
+            logger.info("تم استيراد main.py بنجاح")
+        except ImportError as e:
+            logger.error(f"خطأ استيراد: {str(e)}")
+            
+            # محاولة بديلة باستخدام الاستيراد الديناميكي
+            try:
+                import importlib.util
+                main_path = os.path.join(bot_path, "src", "main.py")
+                logger.info(f"محاولة تحميل: {main_path}")
+                
+                if os.path.exists(main_path):
+                    spec = importlib.util.spec_from_file_location("main", main_path)
+                    bot_main = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(bot_main)
+                    logger.info("تم تحميل main.py بطريقة بديلة")
+                else:
+                    logger.error(f"الملف غير موجود: {main_path}")
+                    raise FileNotFoundError(f"الملف غير موجود: {main_path}")
+            except Exception as e2:
+                logger.error(f"فشل التحميل البديل: {str(e2)}")
+                bot_status["status"] = "error"
+                bot_status["last_error"] = f"فشل تحميل الوحدات: {str(e)} | {str(e2)}"
+                return
+                
         import asyncio
         
         # تغيير حالة البوت
         bot_status["status"] = "running"
         
         # تشغيل البوت
-        asyncio.run(main())
+        if hasattr(bot_main, 'main'):
+            asyncio.run(bot_main.main())
+        else:
+            logger.error("لم يتم العثور على دالة main()")
+            bot_status["status"] = "error"
+            bot_status["last_error"] = "لم يتم العثور على دالة main()"
+            
     except Exception as e:
         logger.error(f"حدث خطأ أثناء تشغيل البوت: {str(e)}")
         bot_status["status"] = "error"
         bot_status["last_error"] = str(e)
         import traceback
-        traceback.print_exc()
+        logger.error(traceback.format_exc())
 
 def start_bot_thread():
     """بدء خيط البوت"""
