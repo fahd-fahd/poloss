@@ -1,0 +1,34 @@
+{
+  "allowedCommandChannels": [
+    "926542824965554187",
+    "926579443911245905"
+  ],
+  "allowedChatChannels": [
+    "926542824965554187",
+    "926579443911245905"
+  ],
+  "restrictToAllowedChannels": true,
+  "sendWarningMessage": true,
+  "warningMessage": "عذراً، لا يمكنني الاستجابة للأوامر في هذه القناة. يرجى استخدام القنوات المخصصة للبوت.",
+  "adminChannels": [],
+  "logChannels": {
+    "commandLogs": "",
+    "errorLogs": "",
+    "joinLeave": ""
+  },
+  "welcomeChannel": "",
+  "generalChannel": "",
+  "botCommands": "",
+  "adminChannel": "",
+  "modLogsChannel": "",
+  "musicChannel": "",
+  "gameChannels": [],
+  "restrictedChannels": [],
+  "categories": {
+    "general": "",
+    "information": "",
+    "gaming": "",
+    "voice": "",
+    "admin": ""
+  }
+}
