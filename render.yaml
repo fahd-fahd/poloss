@@ -1,0 +1,18 @@
+services:
+  # خدمة ويب لتشغيل البوت وواجهة الويب
+  - type: web
+    name: discord-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+      - key: TOKEN
+        sync: false
+      - key: MONGODB_URI
+        sync: false 

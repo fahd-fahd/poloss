@@ -34,7 +34,7 @@ except ImportError as e:
 
 def check_env_file():
     """التحقق من وجود ملف .env"""
-    env_path = Path(__file__).parent / ".env"
+    env_path = Path(".") / ".env"
     if not env_path.exists():
         print("⚠️ تحذير: ملف .env غير موجود.")
         
@@ -69,7 +69,7 @@ LOG_LEVEL=debug
 
 def check_config_dir():
     """التحقق من وجود مجلد config وملفاته"""
-    config_dir = Path(__file__).parent / "config"
+    config_dir = Path("python_bot") / "config"
     if not config_dir.exists() or not list(config_dir.glob("*.json")):
         print("⚠️ تحذير: مجلد config فارغ أو غير موجود.")
         print("سيتم إنشاء ملفات التكوين عند بدء تشغيل البوت.")
@@ -86,14 +86,15 @@ def main():
     check_config_dir()
     
     # إضافة مسار البوت إلى مسار البحث
-    bot_path = str(Path(__file__).parent)
+    bot_path = str(Path("python_bot").absolute())
     if bot_path not in sys.path:
         sys.path.append(bot_path)
     
     # تشغيل البوت
     try:
         print("🚀 جاري تشغيل البوت...")
-        from src.main import main
+        sys.path.insert(0, bot_path)
+        from python_bot.src.main import main
         import asyncio
         asyncio.run(main())
     except KeyboardInterrupt:

@@ -9,6 +9,7 @@ motor==3.3.2
 pydantic==2.5.2
 asyncio==3.4.3
 datetime
-wavelink==2.6.7
+wavelink==2.6.5
 youtube-dl==2021.12.17
-PyNaCl==1.5.0 
+PyNaCl==1.5.0
+gunicorn==21.2.0 

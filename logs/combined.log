@@ -1,0 +1,97 @@
+{"level":"warn","message":"استخدام عنوان MongoDB افتراضي للتطوير المحلي","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:١٠ م"}
+{"level":"warn","message":"استخدام رمز افتراضي للتطوير المحلي - لن يعمل الاتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:١٠ م"}
+{"level":"error","message":"فشل الاتصال بقاعدة البيانات: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"warn","message":"متابعة التشغيل في وضع التطوير بدون قاعدة بيانات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: تقييد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: رصيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: عمل","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: بلاك","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: عملة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: نرد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: صيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: احزر","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: سباق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: يانصيب","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: روليت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: لعبة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات-البوت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: undefined","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: undefined","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: مساعدة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: مستوى","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الأمر: بنق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"error","message":"خطأ في تحميل الأوامر: Cannot find module 'ytdl-core'\nRequire stack:\n- C:\\New folder (2)\\commands\\music\\play.js\n- C:\\New folder (2)\\src\\index.js","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الحدث: guildMemberAdd","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الحدث: interactionCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الحدث: messageCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل الحدث: ready","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢٠ م"}
+{"level":"info","message":"تم تحميل 4 حدث","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢١ م"}
+{"level":"warn","message":"تشغيل في وضع التطوير بدون اتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢١ م"}
+{"level":"info","message":"خادم الويب يعمل على المنفذ 3000","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٤٠:٢١ م"}
+{"level":"warn","message":"استخدام عنوان MongoDB افتراضي للتطوير المحلي","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:١٣ م"}
+{"level":"warn","message":"استخدام رمز افتراضي للتطوير المحلي - لن يعمل الاتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:١٣ م"}
+{"level":"error","message":"فشل الاتصال بقاعدة البيانات: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"warn","message":"متابعة التشغيل في وضع التطوير بدون قاعدة بيانات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: تقييد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: رصيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: عمل","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: بلاك","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: عملة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: نرد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: صيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: احزر","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: سباق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: يانصيب","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: روليت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: لعبة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات-البوت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: undefined","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: undefined","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: مساعدة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: مستوى","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الأمر: بنق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"error","message":"خطأ في تحميل الأوامر: Cannot find module 'ytdl-core'\nRequire stack:\n- C:\\New folder (2)\\commands\\music\\play.js\n- C:\\New folder (2)\\src\\index.js","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الحدث: guildMemberAdd","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الحدث: interactionCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الحدث: messageCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل الحدث: ready","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"تم تحميل 4 حدث","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"warn","message":"تشغيل في وضع التطوير بدون اتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"info","message":"خادم الويب يعمل على المنفذ 3000","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٣:٥١:٢٣ م"}
+{"level":"warn","message":"استخدام عنوان MongoDB افتراضي للتطوير المحلي","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٤٥ م"}
+{"level":"warn","message":"استخدام رمز افتراضي للتطوير المحلي - لن يعمل الاتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٤٥ م"}
+{"level":"error","message":"فشل الاتصال بقاعدة البيانات: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"warn","message":"متابعة التشغيل بدون قاعدة بيانات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: تقييد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: رصيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: عمل","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: بلاك","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: عملة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: نرد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: صيد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: احزر","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: سباق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: يانصيب","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: روليت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: لعبة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: قنوات-البوت","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"warn","message":"الأمر في discord.js.js لا يحتوي على خاصية name","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"warn","message":"الأمر في dotenv.js لا يحتوي على خاصية name","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: مساعدة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: مستوى","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الأمر: بنق","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"error","message":"فشل تحميل الأمر play.js: Cannot find module 'ytdl-core'\nRequire stack:\n- C:\\New folder (2)\\commands\\music\\play.js\n- C:\\New folder (2)\\src\\index.js","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"error","message":"فشل تحميل الأمر stop.js: Cannot find module '@discordjs/voice'\nRequire stack:\n- C:\\New folder (2)\\utils\\voiceManager.js\n- C:\\New folder (2)\\commands\\music\\stop.js\n- C:\\New folder (2)\\src\\index.js","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"error","message":"فشل تحميل الأمر volume.js: Cannot find module 'ytdl-core'\nRequire stack:\n- C:\\New folder (2)\\commands\\music\\play.js\n- C:\\New folder (2)\\commands\\music\\volume.js\n- C:\\New folder (2)\\src\\index.js","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل 17 أمر من 5 فئة","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الحدث: guildMemberAdd","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الحدث: interactionCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الحدث: messageCreate","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل الحدث: ready","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"تم تحميل 4 حدث","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"warn","message":"تشغيل في وضع التطوير بدون اتصال بديسكورد","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"خادم الويب يعمل على المنفذ 3000","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
+{"level":"info","message":"حالة التطبيق: خادم الويب: متصل | MongoDB: غير متصل | Discord: غير متصل","service":"discord-bot","timestamp":"٩‏/٥‏/٢٠٢٥، ٤:٠٨:٥١ م"}
