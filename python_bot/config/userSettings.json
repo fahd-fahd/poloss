@@ -1,0 +1,9 @@
+{
+  "defaultSettings": {
+    "language": "arabic",
+    "notifications": true,
+    "prefix": "!"
+  },
+  "users": {},
+  "servers": {}
+}

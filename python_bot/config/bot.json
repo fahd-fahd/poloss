@@ -1,0 +1,36 @@
+{
+  "botName": "Discord Bot",
+  "defaultPrefix": "!",
+  "adminRoles": ["Admin", "Moderator"],
+  "bank": {
+    "initialBalance": 1000,
+    "currencyName": "عملة",
+    "currencyEmoji": "💰",
+    "dailyReward": 200,
+    "dailyCooldown": 86400
+  },
+  "games": {
+    "enabled": true,
+    "minBet": 10,
+    "maxBet": 10000,
+    "fishingItems": [
+      {"name": "سمكة عادية", "value": 50, "chance": 0.5},
+      {"name": "سمكة نادرة", "value": 150, "chance": 0.3},
+      {"name": "سمكة نادرة جداً", "value": 500, "chance": 0.15},
+      {"name": "كنز", "value": 1000, "chance": 0.05}
+    ]
+  },
+  "music": {
+    "enabled": true,
+    "maxQueueSize": 100,
+    "defaultVolume": 50
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "channels": {
+      "serverLogs": "",
+      "commandLogs": ""
+    }
+  }
+} 
