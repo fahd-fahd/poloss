@@ -86,11 +86,18 @@ class MusicPlayer(commands.Cog):
         self.bot = bot
         self.song_queue = {}
         self.now_playing = {}
-        bot.loop.create_task(self.connect_nodes())
+        # تغيير هنا: استخدام setup_hook بدلاً من bot.loop.create_task
+        # سنستخدم أسلوب Cog.listener لاستدعاء الدالة عند جاهزية البوت
+
+    # إضافة هذه الدالة لمعالجة حدث جاهزية البوت
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """يتم استدعاؤها عندما يكون البوت جاهزاً"""
+        await self.connect_nodes()
     
     async def connect_nodes(self):
         """الاتصال بخوادم Wavelink"""
-        await self.bot.wait_until_ready()
+        # لا نحتاج إلى wait_until_ready هنا لأن on_ready يضمن أن البوت جاهز بالفعل
         
         try:
             await wavelink.NodePool.create_node(
@@ -563,5 +570,5 @@ class MusicPlayer(commands.Cog):
             return f"{minutes}:{seconds:02d}"
 
 async def setup(bot):
-    """إعداد الصنف وإضافته إلى البوت"""
+    """إعداد الصنف"""
     await bot.add_cog(MusicPlayer(bot)) 

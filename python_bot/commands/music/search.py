@@ -210,7 +210,7 @@ class SearchResultsView(View):
             return f"{minutes}:{seconds:02d}"
 
 class MusicSearch(commands.Cog):
-    """نظام البحث عن الموسيقى في YouTube"""
+    """أوامر البحث عن الموسيقى"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -391,5 +391,5 @@ class MusicSearch(commands.Cog):
             return f"{minutes}:{seconds:02d}"
 
 async def setup(bot):
-    """إعداد الصنف وإضافته إلى البوت"""
+    """إعداد الصنف"""
     await bot.add_cog(MusicSearch(bot)) 

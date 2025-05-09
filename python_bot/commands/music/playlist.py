@@ -422,5 +422,5 @@ class Playlist(commands.Cog):
             return f"{minutes}:{seconds:02d}"
 
 async def setup(bot):
-    """إعداد الصنف وإضافته إلى البوت"""
+    """إعداد الصنف"""
     await bot.add_cog(Playlist(bot)) 
