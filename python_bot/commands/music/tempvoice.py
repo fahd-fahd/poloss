@@ -105,38 +105,54 @@ class TempVoice(commands.Cog):
         self.bot.add_view(MusicControlView(self, None, None))
         
         # الاتصال بخادم Lavalink
+        self.lavalink_connected = False  # متغير لتتبع حالة الاتصال
+        
         try:
-            # استخدام خادم Lavalink عام
+            # قائمة محدثة من خوادم Lavalink العامة الموثوقة
             nodes = [
+                # خادم 1 - من المشروع الرسمي لـ Lavalink
                 wavelink.Node(
-                    uri="https://lavalink.lexnet.cc",  # خادم Lavalink عام
-                    password="lexn3tl4v4l1nk"         # كلمة المرور للخادم العام
+                    uri="https://lava.link",
+                    password="anything as a password"
                 ),
-                # يمكن إضافة خوادم أخرى كاحتياطي
+                # خادم 2
                 wavelink.Node(
-                    uri="https://lavalink.devz.cloud",
-                    password="devz.cloud"
+                    uri="https://lavalink.darrennathanael.com",
+                    password="JdJK7YnX"
                 ),
+                # خادم 3
                 wavelink.Node(
-                    uri="https://lavalink.api.xgstudios.net",
-                    password="xgstudios.net"
+                    uri="https://lavalink.mariliun.ml",
+                    password="lavaliun"
+                ),
+                # خادم 4
+                wavelink.Node(
+                    uri="https://lavalink.oops.wtf",
+                    password="www.freelavalink.ga"
                 )
             ]
+            
+            # محاولة الاتصال بالخوادم العامة
             await wavelink.Pool.connect(nodes=nodes, client=self.bot)
+            self.lavalink_connected = True
             print("[TempVoice] تم الاتصال بخادم Lavalink بنجاح")
+            
         except Exception as e:
-            print(f"[TempVoice] خطأ في الاتصال بخادم Lavalink: {e}")
-            # محاولة الاتصال بخادم محلي إذا فشل الاتصال بالخوادم العامة
+            print(f"[TempVoice] خطأ في الاتصال بخوادم Lavalink العامة: {e}")
+            
+            # محاولة الاتصال بخادم محلي
             try:
                 local_node = wavelink.Node(
                     uri="http://localhost:2333",
                     password="youshallnotpass"
                 )
                 await wavelink.Pool.connect(nodes=[local_node], client=self.bot)
+                self.lavalink_connected = True
                 print("[TempVoice] تم الاتصال بخادم Lavalink المحلي بنجاح")
             except Exception as e2:
                 print(f"[TempVoice] خطأ في الاتصال بخادم Lavalink المحلي: {e2}")
-                print("[TempVoice] لا يمكن الاتصال بأي خادم Lavalink. لن تعمل ميزة تشغيل الموسيقى.")
+                print("[TempVoice] لا يمكن الاتصال بأي خادم Lavalink. سيتم إنشاء الغرف المؤقتة بدون ميزة تشغيل الموسيقى.")
+
 
 
 
