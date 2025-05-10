@@ -26,9 +26,22 @@ class MainMenuView(ui.View):
         # تحديث الرسالة بقائمة الموسيقى
         embed = discord.Embed(
             title="🎵 قائمة الموسيقى",
-            description="اختر أحد خيارات الموسيقى أدناه:",
+            description="اختر أحد خيارات الموسيقى أدناه أو استخدم الأوامر المباشرة:",
             color=discord.Color.blurple()
         )
+        
+        # إضافة معلومات عن الأوامر المباشرة
+        embed.add_field(
+            name="🔊 الأوامر السريعة",
+            value="**!تشغيل** أو **!p** + رابط/اسم أغنية: لتشغيل موسيقى\n"
+                  "**!إيقاف** أو **!s**: لإيقاف الموسيقى\n"
+                  "**!تخطي** أو **!sk**: لتخطي الأغنية الحالية\n"
+                  "**!صوت** أو **!v**: للتحكم بالصوت",
+            inline=False
+        )
+        
+        embed.set_footer(text="يمكنك استخدام أزرار التنقل أدناه أو الأوامر المباشرة")
+        
         await interaction.response.edit_message(embed=embed, view=music_view)
     
     @ui.button(label="🎮 الألعاب", style=discord.ButtonStyle.success)
@@ -44,9 +57,22 @@ class MainMenuView(ui.View):
         # تحديث الرسالة بقائمة الألعاب
         embed = discord.Embed(
             title="🎮 قائمة الألعاب",
-            description="اختر إحدى الألعاب أدناه:",
+            description="اختر إحدى الألعاب أدناه أو استخدم الأوامر المباشرة:",
             color=discord.Color.green()
         )
+        
+        # إضافة معلومات عن الأوامر المباشرة
+        embed.add_field(
+            name="🎲 الأوامر السريعة",
+            value="**!صيد** أو **!fish**: للعب الصيد\n"
+                  "**!سباق** أو **!horserace**: للعب سباق الخيول\n"
+                  "**!نرد** أو **!dice**: للعب النرد\n"
+                  "**!بلاك_جاك** أو **!blackjack**: للعب بلاك جاك",
+            inline=False
+        )
+        
+        embed.set_footer(text="العب واربح المزيد من العملات!")
+        
         await interaction.response.edit_message(embed=embed, view=games_view)
     
     @ui.button(label="💰 البنك", style=discord.ButtonStyle.secondary)
@@ -62,9 +88,30 @@ class MainMenuView(ui.View):
         # تحديث الرسالة بقائمة البنك
         embed = discord.Embed(
             title="💰 قائمة البنك",
-            description="اختر أحد خيارات البنك أدناه:",
+            description="اختر أحد خيارات البنك أدناه أو استخدم الأوامر المباشرة:",
             color=discord.Color.gold()
         )
+        
+        # إضافة معلومات عن الأوامر المباشرة
+        embed.add_field(
+            name="💵 الأوامر السريعة",
+            value="**!رصيد** أو **!balance**: لعرض رصيدك\n"
+                  "**!يومي** أو **!daily**: للحصول على المكافأة اليومية\n"
+                  "**!تحويل** أو **!transfer**: لتحويل الأموال\n"
+                  "**!حماية** أو **!protection**: لحماية أموالك\n"
+                  "**!سرقة** أو **!steal**: لمحاولة سرقة الآخرين",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🛡️ نظام الحماية",
+            value="استخدم **!حماية** لشراء حماية من السرقة بثلاثة مستويات:\n"
+                  "- 3 ساعات مقابل 2500 عملة\n"
+                  "- 8 ساعات مقابل 5000 عملة\n"
+                  "- 24 ساعة مقابل 15000 عملة",
+            inline=False
+        )
+        
         await interaction.response.edit_message(embed=embed, view=bank_view)
     
     @ui.button(label="🔗 انضمام لرابط", style=discord.ButtonStyle.primary)
@@ -78,7 +125,21 @@ class MainMenuView(ui.View):
         await interaction.message.delete()
         
         # إعداد أمر الدعوة
-        message = await interaction.followup.send("يرجى إدخال رابط الدعوة الذي تريد الانضمام إليه:")
+        embed = discord.Embed(
+            title="🔗 انضمام لرابط دعوة",
+            description="يرجى إدخال رابط الدعوة الذي تريد الانضمام إليه:",
+            color=discord.Color.blue()
+        )
+        
+        # إضافة تلميح للاستخدام المباشر
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام `!دعوة` أو `!invite` مباشرة:\n"
+                  "`!دعوة رابط_الدعوة`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
         
         # انتظار رد المستخدم
         try:
@@ -151,15 +212,51 @@ class MusicMenuView(ui.View):
         await interaction.message.delete()
         
         # إعداد أمر التشغيل
-        message = await interaction.followup.send("يرجى كتابة اسم الأغنية أو رابط YouTube للتشغيل:")
+        embed = discord.Embed(
+            title="🎵 تشغيل موسيقى",
+            description="أرسل رابط أو اسم الأغنية التي تريد تشغيلها.",
+            color=discord.Color.green()
+        )
+        
+        # إضافة تلميح للاستخدام المباشر
+        embed.add_field(
+            name="💡 تلميح سريع",
+            value="في المرة القادمة، يمكنك استخدام:\n"
+                 "`!p رابط_أو_اسم_الأغنية`\n"
+                 "`!تشغيل رابط_أو_اسم_الأغنية`\n\n"
+                 "البوت سينضم تلقائيًا للقناة الصوتية التي أنت فيها!",
+            inline=False
+        )
+        
+        # إضافة أمثلة للاستخدام
+        embed.add_field(
+            name="📝 أمثلة",
+            value="`!p https://www.youtube.com/watch?v=dQw4w9WgXcQ`\n"
+                 "`!تشغيل ديسباسيتو`\n"
+                 "`!p أغنية عربية`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
         
         # انتظار رد المستخدم
         try:
             response = await self.bot.wait_for(
                 'message',
                 check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
-                timeout=30.0
+                timeout=60.0
             )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="⏳ جاري التشغيل...",
+                description=f"جاري تشغيل: `{response.content}`",
+                color=discord.Color.blue()
+            )
+            
+            wait_embed.set_footer(text="سيتم الانضمام تلقائيًا إلى القناة الصوتية الخاصة بك")
+            
+            await message.edit(embed=wait_embed)
             
             # تنفيذ أمر التشغيل
             play_command = self.bot.get_command('تشغيل') or self.bot.get_command('play')
@@ -167,15 +264,31 @@ class MusicMenuView(ui.View):
                 ctx = await self.bot.get_context(response)
                 await ctx.invoke(play_command, query=response.content)
                 
-                # حذف رسالة الطلب
+                # حذف رسالة الطلب بعد التشغيل
                 try:
                     await message.delete()
                 except:
                     pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
             else:
-                await interaction.followup.send("عذراً، أمر التشغيل غير متاح حالياً.")
+                error_embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="عذراً، أمر التشغيل غير متاح حالياً.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
         except asyncio.TimeoutError:
-            await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى باستخدام `!p` أو `!تشغيل`",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
     
     @ui.button(label="⏹️ إيقاف", style=discord.ButtonStyle.secondary)
     async def stop_button(self, interaction: discord.Interaction, button: ui.Button):
@@ -282,6 +395,21 @@ class GamesMenuView(ui.View):
         # إغلاق القائمة
         await interaction.message.delete()
         
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🎣 لعبة الصيد",
+            description="جاري بدء لعبة الصيد...",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!صيد` أو `!fish` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
         # تنفيذ أمر الصيد
         fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
         if fishing_command:
@@ -375,6 +503,21 @@ class BankMenuView(ui.View):
         
         # إغلاق القائمة
         await interaction.message.delete()
+        
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="💵 عرض الرصيد",
+            description="جاري عرض رصيدك...",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!رصيد` أو `!balance` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
         
         # تنفيذ أمر الرصيد
         balance_command = self.bot.get_command('رصيد') or self.bot.get_command('balance')
@@ -547,10 +690,39 @@ class Menu(commands.Cog):
             color=discord.Color.blue()
         )
         
+        # إضافة معلومات الفئات
+        embed.add_field(
+            name="🎵 الموسيقى",
+            value="تشغيل الموسيقى والتحكم بالقنوات الصوتية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎮 الألعاب",
+            value="العاب متنوعة لربح العملات",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="💰 البنك",
+            value="التحكم برصيدك والسرقة والحماية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔗 الانضمام لرابط",
+            value="الانضمام إلى روم من خلال رابط دعوة",
+            inline=True
+        )
+        
         # إضافة معلومات إضافية
         embed.add_field(
-            name="💡 معلومة",
-            value="استخدم الأزرار أدناه للتنقل بين القوائم المختلفة.",
+            name="💡 استخدام سريع",
+            value="يمكنك استخدام الأوامر مباشرة بدلاً من القائمة:\n"
+                 "`!p` أو `!تشغيل`: لتشغيل موسيقى\n"
+                 "`!رصيد`: لعرض رصيدك\n"
+                 "`!سرقة @user`: لسرقة مستخدم\n"
+                 "`!دعوة رابط`: للانضمام لرابط دعوة",
             inline=False
         )
         
