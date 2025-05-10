@@ -67,6 +67,49 @@ class MainMenuView(ui.View):
         )
         await interaction.response.edit_message(embed=embed, view=bank_view)
     
+    @ui.button(label="🔗 انضمام لرابط", style=discord.ButtonStyle.primary)
+    async def join_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الانضمام لرابط دعوة"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # حذف رسالة القائمة
+        await interaction.message.delete()
+        
+        # إعداد أمر الدعوة
+        message = await interaction.followup.send("يرجى إدخال رابط الدعوة الذي تريد الانضمام إليه:")
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=30.0
+            )
+            
+            # تنفيذ أمر الدعوة
+            invite_command = self.bot.get_command('دعوة') or self.bot.get_command('invite')
+            if invite_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(invite_command, invite_link=response.content)
+                
+                # حذف رسالة الطلب
+                try:
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                await interaction.followup.send("عذراً، أمر الانضمام غير متاح حالياً.")
+        except asyncio.TimeoutError:
+            await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
+    
     @ui.button(label="❌ إغلاق", style=discord.ButtonStyle.danger)
     async def close_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر إغلاق القائمة"""
