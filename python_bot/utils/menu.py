@@ -773,7 +773,6 @@ class NavigationView(View):
                     await response.delete()
                 except:
                     pass
-                
                 # إعادة إنشاء القائمة بعد فترة
                 await asyncio.sleep(5)
                 await self.show_menu("music")
@@ -844,9 +843,7 @@ class NavigationView(View):
                 try:
                     await response.delete()
                 except:
-                    pass
-                
-                # إعادة إنشاء القائمة بعد فترة
+                    await asyncio.sleep(3)
                 await asyncio.sleep(3)
                 await self.show_menu("music")
             else:
@@ -947,10 +944,6 @@ class NavigationView(View):
                         await response.delete()
                     except:
                         pass
-                    
-                    # إعادة إنشاء القائمة بعد فترة
-                    await asyncio.sleep(5)
-                    await self.show_menu("economy")
                 else:
                     error_embed = discord.Embed(
                         title="❌ خطأ في الصيغة" if self.language == "ar" else "❌ Format Error",
@@ -1035,9 +1028,8 @@ class NavigationView(View):
                 try:
                     await response.delete()
                 except:
-                    pass
-                
-                # إعادة إنشاء القائمة بعد فترة
+                    await asyncio.sleep(5)
+                    await self.show_menu("invites")
                 await asyncio.sleep(5)
                 await self.show_menu("invites")
             else:
@@ -1198,7 +1190,6 @@ class NavigationView(View):
                     await message.delete()
                 except:
                     pass
-                
                 # حذف رسالة المستخدم
                 try:
                     await response.delete()
@@ -1379,7 +1370,6 @@ class NavigationView(View):
                     await message.delete()
                 except:
                     pass
-                
                 # حذف رسالة المستخدم
                 try:
                     await response.delete()
@@ -1492,59 +1482,52 @@ class NavigationView(View):
         if interaction.user.id != self.ctx.author.id:
             error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
             return await interaction.response.send_message(error_msg, ephemeral=True)
-        
-        # إغلاق القائمة الحالية
-        await interaction.response.edit_message(view=None)
-        
-        # إعداد أمر السرقة
-            embed = discord.Embed(
-            title="🕵️ سرقة سريعة" if self.language == "ar" else "🕵️ Quick Steal",
-            description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:" if self.language == "ar" else "Enter the name or ID of the user you want to steal from:",
-                color=discord.Color.red()
-            )
-            
-        # إضافة تحذير
-        embed.add_field(
-            name="⚠️ تحذير" if self.language == "ar" else "⚠️ Warning",
-            value="تذكر أن السرقة قد تفشل وتخسر جزءاً من أموالك!" if self.language == "ar" else "Remember that stealing may fail and you could lose some money!",
-            inline=False
-        )
-        
-        await interaction.response.edit_message(embed=embed)
-        
-        # انتظار رد المستخدم
-        try:
-            response = await self.bot.wait_for(
-                'message',
-                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
-                timeout=30.0
-            )
-            
+return await interaction.response.send_message(error_msg, ephemeral=True)
+# إغلاق القائمة الحالية
+await interaction.response.edit_message(view=None)
+# إعداد أمر السرقة
+embed = discord.Embed(
+title="🕵️ سرقة سريعة" if self.language == "ar" else "🕵️ Quick Steal",
+description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:" if self.language == "ar" else "Enter the name or ID of the user you want to steal from:",
+color=discord.Color.red()
+)
+# إضافة تحذير
+embed.add_field(
+name="⚠️ تحذير" if self.language == "ar" else "⚠️ Warning",
+value="تذكر أن السرقة قد تفشل وتخسر جزءاً من أموالك!" if self.language == "ar" else "Remember that stealing may fail and you could lose some money!",
+)
+response = await self.bot.wait_for(
+    'message',
+    check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+    timeout=30.0
+)
             # رسالة الانتظار
-            wait_embed = discord.Embed(
-                title="🕵️ جاري محاولة السرقة..." if self.language == "ar" else "🕵️ Attempting to steal...",
-                description=f"محاولة سرقة `{response.content}`..." if self.language == "ar" else f"Attempting to steal from `{response.content}`...",
-                color=discord.Color.gold()
-            )
-            
-            await self.message.edit(embed=wait_embed)
-            
-            # تنفيذ أمر السرقة
-            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
-            if steal_command:
-                ctx = await self.bot.get_context(response)
-                await ctx.invoke(steal_command, target=response.content)
-                
-                # حذف رسالة المستخدم
-                try:
-                    await response.delete()
-                except:
-                    pass
-                
-                # إعادة إنشاء القائمة بعد فترة
-                await asyncio.sleep(5)
-                await self.show_menu("economy")
-            else:
+async def __fixed_embed_scope__():
+    wait_embed = discord.Embed(
+        title='يرجى كتابة عدد العملات المراد إرسالها:',
+        description='يمكنك الإلغاء في أي وقت بكتابة "إلغاء".',
+        color=discord.Color.red()
+    )
+    await interaction.response.send_message(embed=wait_embed, ephemeral=True)
+    try:
+        response = await self.bot.wait_for(
+            'message',
+            check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+            timeout=30.0
+        )
+    except:
+        pass
+        ctx = await self.bot.get_context(response)
+        await ctx.invoke(steal_command, target=response.content)
+
+        # حذف رسالة المستخدم
+        try:
+            await response.delete()
+        except:
+            # إعادة إنشاء القائمة بعد فترة
+            await asyncio.sleep(5)
+            await self.show_menu("economy")
+        else:
                 error_embed = discord.Embed(
                     title="❌ خطأ" if self.language == "ar" else "❌ Error",
                     description="عذراً، أمر السرقة غير متاح حالياً." if self.language == "ar" else "Sorry, the steal command is not available.",
@@ -1553,21 +1536,24 @@ class NavigationView(View):
                 await self.message.edit(embed=error_embed)
                 
                 # إعادة إنشاء القائمة بعد فترة
-                await asyncio.sleep(3)
-                await self.show_menu("economy")
-        except asyncio.TimeoutError:
-            timeout_embed = discord.Embed(
-                title="⏰ انتهت المهلة" if self.language == "ar" else "⏰ Timeout",
-                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى." if self.language == "ar" else "Timeout. Please try again.",
-                color=discord.Color.orange()
-            )
-            await self.message.edit(embed=timeout_embed)
-            
-            # إعادة إنشاء القائمة بعد فترة
-            await asyncio.sleep(3)
-            await self.show_menu("economy")
-            
-    async def _language_settings(self, interaction):
+async def __handle_timeout_embed__():
+    try:
+        await asyncio.sleep(5)
+        await self.show_menu("economy")
+    except:
+        pass
+timeout_embed = discord.Embed(
+    title="⏰ انتهت المهلة" if self.language == "ar" else "⏰ Timeout",
+    description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى." if self.language == "ar" else "Timeout. Please try again.",
+    color=discord.Color.orange()
+)
+await self.message.edit(embed=timeout_embed)
+
+# إعادة إنشاء القائمة بعد فترة
+await asyncio.sleep(3)
+await self.show_menu("economy")
+
+async def _language_settings(self, interaction):
         """إعدادات اللغة"""
         # التحقق من المستخدم
         if interaction.user.id != self.ctx.author.id:
@@ -1586,7 +1572,7 @@ class NavigationView(View):
         else:
             msg = "عذراً، أمر إعدادات اللغة غير متاح حالياً." if self.language == "ar" else "Sorry, the language settings command is not available."
             await interaction.followup.send(msg)
-            
+
     async def _play_fishing(self, interaction):
         """لعب لعبة الصيد"""
         # التحقق من المستخدم
