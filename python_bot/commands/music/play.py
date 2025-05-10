@@ -94,41 +94,21 @@ class MusicPlayer(commands.Cog):
     async def on_ready(self):
         """يتم استدعاؤها عندما يكون البوت جاهزاً"""
         await self.connect_nodes()
-    
     async def connect_nodes(self):
         """الاتصال بخوادم Wavelink"""
-        # لا نحتاج إلى wait_until_ready هنا لأن on_ready يضمن أن البوت جاهز بالفعل
-        
         try:
-            await wavelink.Pool.connect(client=bot, nodes=[
-                bot=self.bot,
-                host='lavalink.oops.wtf',
-                port=443,
-                password='www.freelavalink.ga',
-                https=True
+            await wavelink.Pool.connect(
+                client=self.bot,
+                nodes=[
+                    wavelink.Node(
+                        uri="https://freelavalink.ga:443",
+                        password="www.freelavalink.ga",
+                        secure=True
+                    )
+                ]
             )
         except Exception as e:
-            print(f"خطأ في الاتصال بخادم Lavalink: {str(e)}")
-            try:
-                await wavelink.Pool.connect(
-                    client=bot,
-                    nodes=[
-                        wavelink.Node(
-                            uri="http://localhost:2333",
-                            password="youshallnotpass"
-                        )
-                    ]
-                )
-                    host='lava.link',
-                    port=80,
-                    password='dismusic',
-                    https=False
-                )
-            except Exception as e:
-                print(f"خطأ في الاتصال بخادم Lavalink البديل: {str(e)}")
-    
-    @commands.Cog.listener()
-    async def on_wavelink_node_ready(self, node: wavelink.Node):
+            print(f"خطأ أثناء الاتصال بـ Lavalink: {str(e)}")
         """عند اتصال عقدة Wavelink"""
         print(f'تم الاتصال بعقدة Wavelink: {node.identifier}')
     
