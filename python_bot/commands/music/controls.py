@@ -420,7 +420,7 @@ class MusicControls(commands.Cog):
     
     @commands.command(
         name="مسح_القائمة",
-        aliases=["clear", "مسح", "تفريغ_القائمة"],
+aliases=["مسح", "تفريغ_القائمة"],
         description="مسح قائمة الأغاني"
     )
     async def clear_queue(self, ctx):
