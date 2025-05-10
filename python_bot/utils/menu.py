@@ -1288,7 +1288,7 @@ class NavigationView(View):
             action=lambda i: self.show_menu("main", i)
         )
         self.add_item(back_button)
-
+    
     async def _play_music(self, interaction):
         """تشغيل موسيقى"""
         # التحقق من المستخدم
@@ -1439,7 +1439,7 @@ class NavigationView(View):
         else:
             msg = "عذراً، أمر المكافأة اليومية غير متاح حالياً." if self.language == "ar" else "Sorry, the daily reward command is not available."
             await interaction.followup.send(msg)
-            
+    
     async def _skip_music(self, interaction):
         """تخطي الأغنية الحالية"""
         # التحقق من المستخدم
@@ -1497,12 +1497,12 @@ class NavigationView(View):
         await interaction.response.edit_message(view=None)
         
         # إعداد أمر السرقة
-        embed = discord.Embed(
+            embed = discord.Embed(
             title="🕵️ سرقة سريعة" if self.language == "ar" else "🕵️ Quick Steal",
             description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:" if self.language == "ar" else "Enter the name or ID of the user you want to steal from:",
-            color=discord.Color.red()
-        )
-        
+                color=discord.Color.red()
+            )
+            
         # إضافة تحذير
         embed.add_field(
             name="⚠️ تحذير" if self.language == "ar" else "⚠️ Warning",
