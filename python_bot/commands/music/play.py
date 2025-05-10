@@ -107,10 +107,10 @@ class MusicPlayer(commands.Cog):
                     )
                 ]
             )
+            for node in wavelink.Pool.nodes.values():
+                print(f'✅ تم الاتصال بعقدة Wavelink: {node.identifier}')
         except Exception as e:
             print(f"خطأ أثناء الاتصال بـ Lavalink: {str(e)}")
-        """عند اتصال عقدة Wavelink"""
-        print(f'تم الاتصال بعقدة Wavelink: {node.identifier}')
     
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, player: wavelink.Player, track, reason):
