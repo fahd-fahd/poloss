@@ -27,8 +27,8 @@ class ComprehensiveMenu(commands.Cog):
         self.bot = bot
     
     @commands.command(
-        name="قائمة_شاملة",
-        aliases=["m", "all", "شامل", "quick", "سريع"],
+        name="قائمة_كاملة",
+        aliases=["cm", "all", "شامل", "quick", "سريع", "كامل"],
         description="عرض قائمة شاملة تحتوي على جميع الأوامر الأساسية في صفحة واحدة"
     )
     async def comprehensive_menu(self, ctx):

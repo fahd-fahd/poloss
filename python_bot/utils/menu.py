@@ -1108,6 +1108,525 @@ class NavigationView(View):
                 await asyncio.sleep(3)
                 await self.show_menu("invites")
 
+    async def _quick_play_music(self, interaction):
+        """تشغيل موسيقى سريع"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # التحقق ما إذا كان المستخدم في قناة صوتية
+        if not interaction.user.voice:
+            error_msg = "يجب أن تكون في قناة صوتية أولاً!" if self.language == "ar" else "You must be in a voice channel first!"
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # إعداد واجهة التشغيل السريع
+        embed = discord.Embed(
+            title="▶️ التشغيل السريع" if self.language == "ar" else "▶️ Quick Play",
+            description="أدخل اسم الأغنية أو رابط YouTube للتشغيل مباشرة:" if self.language == "ar" else "Enter the song name or YouTube link for direct playback:",
+            color=discord.Color.green()
+        )
+        
+        # إضافة تلميح حول التشغيل
+        embed.add_field(
+            name="🔊 ملاحظة" if self.language == "ar" else "🔊 Note",
+            value="سيتم الانضمام تلقائياً إلى قناتك الصوتية الحالية وتشغيل الموسيقى فوراً!" if self.language == "ar" else "The bot will automatically join your current voice channel and play music immediately!",
+            inline=False
+        )
+        
+        # إضافة أمثلة
+        embed.add_field(
+            name="📝 أمثلة" if self.language == "ar" else "📝 Examples",
+            value="اكتب اسم أغنية: `أغنية عربية`\nأو رابط: `https://www.youtube.com/...`" if self.language == "ar" else "Type a song name: `Arabic song`\nOr a link: `https://www.youtube.com/...`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=60.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🎵 جاري تشغيل الموسيقى..." if self.language == "ar" else "🎵 Playing music...",
+                description=f"جاري تشغيل: `{response.content}`" if self.language == "ar" else f"Playing: `{response.content}`",
+                color=discord.Color.blue()
+            )
+            
+            wait_embed.set_footer(text="يرجى الانتظار قليلاً..." if self.language == "ar" else "Please wait a moment...")
+            await message.edit(embed=wait_embed)
+            
+            # محاولة الانضمام للقناة الصوتية أولاً إذا لم يكن البوت متصلاً
+            voice_channel = interaction.user.voice.channel
+            voice_cog = self.bot.get_cog('VoiceControl')
+            if voice_cog:
+                voice_ctx = await self.bot.get_context(self.ctx.message)
+                voice_command = self.bot.get_command('صوت') or self.bot.get_command('voice')
+                if voice_command and not (hasattr(self.ctx.guild, 'voice_client') and self.ctx.guild.voice_client):
+                    try:
+                        await voice_ctx.invoke(voice_command, channel_or_volume=str(voice_channel.id))
+                    except Exception as e:
+                        print(f"Error joining voice channel: {e}")
+            
+            # تنفيذ أمر التشغيل
+            play_command = self.bot.get_command('تشغيل') or self.bot.get_command('play')
+            if play_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(play_command, query=response.content)
+                
+                # تأكيد التشغيل
+                success_embed = discord.Embed(
+                    title="✅ تم التشغيل بنجاح" if self.language == "ar" else "✅ Successfully played",
+                    description=f"تم تشغيل: `{response.content}`" if self.language == "ar" else f"Now playing: `{response.content}`",
+                    color=discord.Color.green()
+                )
+                success_embed.set_footer(text="استمتع بالموسيقى!" if self.language == "ar" else "Enjoy the music!")
+                
+                try:
+                    await message.edit(embed=success_embed)
+                    # مسح الرسالة بعد 5 ثوانٍ
+                    await asyncio.sleep(5)
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ" if self.language == "ar" else "❌ Error",
+                    description="عذراً، أمر التشغيل غير متاح حالياً." if self.language == "ar" else "Sorry, the play command is not available.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة" if self.language == "ar" else "⏰ Timeout",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى." if self.language == "ar" else "Timeout. Please try again.",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
+
+    async def _show_quick_shortcuts(self, interaction):
+        """عرض قائمة الاختصارات السريعة"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # تغيير القائمة الحالية إلى قائمة الاختصارات
+        self.current_menu = "shortcuts"
+        
+        # إنشاء رسالة مضمنة لقائمة الاختصارات
+        embed = await self._create_menu_embed("shortcuts")
+        
+        # تحديث القائمة
+        await interaction.response.edit_message(embed=embed, view=self)
+        
+        # إنشاء أزرار الاختصارات
+        # مسح الأزرار الحالية
+        self.clear_items()
+        
+        # زر الرصيد السريع
+        balance_button = MenuButton(
+            "رصيد", 
+            emoji="💰", 
+            style=discord.ButtonStyle.primary, 
+            language=self.language,
+            action=self._show_balance
+        )
+        self.add_item(balance_button)
+        
+        # زر المكافأة اليومية
+        daily_button = MenuButton(
+            "المكافأة اليومية", 
+            emoji="🎁", 
+            style=discord.ButtonStyle.primary, 
+            language=self.language,
+            action=self._get_daily_reward
+        )
+        self.add_item(daily_button)
+        
+        # زر تشغيل موسيقى سريع
+        quick_play_button = MenuButton(
+            "تشغيل سريع", 
+            emoji="▶️", 
+            style=discord.ButtonStyle.success, 
+            language=self.language,
+            action=self._quick_play_music
+        )
+        self.add_item(quick_play_button)
+        
+        # زر لعبة سريعة
+        quick_game_button = MenuButton(
+            "لعبة سريعة", 
+            emoji="🎲", 
+            style=discord.ButtonStyle.secondary, 
+            language=self.language,
+            action=lambda i: self.show_menu("games", i)
+        )
+        self.add_item(quick_game_button)
+        
+        # زر الرجوع للقائمة الرئيسية
+        back_button = MenuButton(
+            "رجوع للرئيسية", 
+            emoji="🔙", 
+            style=discord.ButtonStyle.danger, 
+            language=self.language,
+            action=lambda i: self.show_menu("main", i)
+        )
+        self.add_item(back_button)
+
+    async def _play_music(self, interaction):
+        """تشغيل موسيقى"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # التحقق ما إذا كان المستخدم في قناة صوتية
+        if not interaction.user.voice:
+            error_msg = "يجب أن تكون في قناة صوتية أولاً!" if self.language == "ar" else "You must be in a voice channel first!"
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # إعداد واجهة التشغيل السريع
+        embed = discord.Embed(
+            title="▶️ التشغيل السريع" if self.language == "ar" else "▶️ Quick Play",
+            description="أدخل اسم الأغنية أو رابط YouTube للتشغيل مباشرة:" if self.language == "ar" else "Enter the song name or YouTube link for direct playback:",
+            color=discord.Color.green()
+        )
+        
+        # إضافة تلميح حول التشغيل
+        embed.add_field(
+            name="🔊 ملاحظة" if self.language == "ar" else "🔊 Note",
+            value="سيتم الانضمام تلقائياً إلى قناتك الصوتية الحالية وتشغيل الموسيقى فوراً!" if self.language == "ar" else "The bot will automatically join your current voice channel and play music immediately!",
+            inline=False
+        )
+        
+        # إضافة أمثلة
+        embed.add_field(
+            name="📝 أمثلة" if self.language == "ar" else "📝 Examples",
+            value="اكتب اسم أغنية: `أغنية عربية`\nأو رابط: `https://www.youtube.com/...`" if self.language == "ar" else "Type a song name: `Arabic song`\nOr a link: `https://www.youtube.com/...`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=60.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🎵 جاري تشغيل الموسيقى..." if self.language == "ar" else "🎵 Playing music...",
+                description=f"جاري تشغيل: `{response.content}`" if self.language == "ar" else f"Playing: `{response.content}`",
+                color=discord.Color.blue()
+            )
+            
+            wait_embed.set_footer(text="يرجى الانتظار قليلاً..." if self.language == "ar" else "Please wait a moment...")
+            await message.edit(embed=wait_embed)
+            
+            # محاولة الانضمام للقناة الصوتية أولاً إذا لم يكن البوت متصلاً
+            voice_channel = interaction.user.voice.channel
+            voice_cog = self.bot.get_cog('VoiceControl')
+            if voice_cog:
+                voice_ctx = await self.bot.get_context(self.ctx.message)
+                voice_command = self.bot.get_command('صوت') or self.bot.get_command('voice')
+                if voice_command and not (hasattr(self.ctx.guild, 'voice_client') and self.ctx.guild.voice_client):
+                    try:
+                        await voice_ctx.invoke(voice_command, channel_or_volume=str(voice_channel.id))
+                    except Exception as e:
+                        print(f"Error joining voice channel: {e}")
+            
+            # تنفيذ أمر التشغيل
+            play_command = self.bot.get_command('تشغيل') or self.bot.get_command('play')
+            if play_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(play_command, query=response.content)
+                
+                # تأكيد التشغيل
+                success_embed = discord.Embed(
+                    title="✅ تم التشغيل بنجاح" if self.language == "ar" else "✅ Successfully played",
+                    description=f"تم تشغيل: `{response.content}`" if self.language == "ar" else f"Now playing: `{response.content}`",
+                    color=discord.Color.green()
+                )
+                success_embed.set_footer(text="استمتع بالموسيقى!" if self.language == "ar" else "Enjoy the music!")
+                
+                try:
+                    await message.edit(embed=success_embed)
+                    # مسح الرسالة بعد 5 ثوانٍ
+                    await asyncio.sleep(5)
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ" if self.language == "ar" else "❌ Error",
+                    description="عذراً، أمر التشغيل غير متاح حالياً." if self.language == "ar" else "Sorry, the play command is not available.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة" if self.language == "ar" else "⏰ Timeout",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى." if self.language == "ar" else "Timeout. Please try again.",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
+
+    async def _show_balance(self, interaction):
+        """عرض الرصيد"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية لمنع التداخل
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # تنفيذ أمر الرصيد
+        balance_command = self.bot.get_command('رصيد') or self.bot.get_command('balance')
+        if balance_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(balance_command)
+        else:
+            msg = "عذراً، أمر الرصيد غير متاح حالياً." if self.language == "ar" else "Sorry, the balance command is not available."
+            await interaction.followup.send(msg)
+
+    async def _get_daily_reward(self, interaction):
+        """الحصول على المكافأة اليومية"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية لمنع التداخل
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # تنفيذ أمر المكافأة اليومية
+        daily_command = self.bot.get_command('يومي') or self.bot.get_command('daily')
+        if daily_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(daily_command)
+        else:
+            msg = "عذراً، أمر المكافأة اليومية غير متاح حالياً." if self.language == "ar" else "Sorry, the daily reward command is not available."
+            await interaction.followup.send(msg)
+            
+    async def _skip_music(self, interaction):
+        """تخطي الأغنية الحالية"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        
+        # تنفيذ أمر تخطي الموسيقى
+        skip_command = self.bot.get_command('تخطي') or self.bot.get_command('skip')
+        if skip_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(skip_command)
+            
+            # إرسال رسالة تأكيد
+            confirm_msg = "تم تخطي الأغنية الحالية." if self.language == "ar" else "Skipped the current song."
+            await interaction.followup.send(confirm_msg, ephemeral=True)
+        else:
+            error_msg = "عذراً، أمر التخطي غير متاح حالياً." if self.language == "ar" else "Sorry, the skip command is not available."
+            await interaction.followup.send(error_msg, ephemeral=True)
+            
+    async def _stop_music(self, interaction):
+        """إيقاف الموسيقى"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        
+        # تنفيذ أمر إيقاف الموسيقى
+        stop_command = self.bot.get_command('إيقاف') or self.bot.get_command('stop')
+        if stop_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(stop_command)
+            
+            # إرسال رسالة تأكيد
+            confirm_msg = "تم إيقاف الموسيقى." if self.language == "ar" else "Stopped the music."
+            await interaction.followup.send(confirm_msg, ephemeral=True)
+        else:
+            error_msg = "عذراً، أمر الإيقاف غير متاح حالياً." if self.language == "ar" else "Sorry, the stop command is not available."
+            await interaction.followup.send(error_msg, ephemeral=True)
+            
+    async def _quick_steal(self, interaction):
+        """سرقة سريعة"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.edit_message(view=None)
+        
+        # إعداد أمر السرقة
+        embed = discord.Embed(
+            title="🕵️ سرقة سريعة" if self.language == "ar" else "🕵️ Quick Steal",
+            description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:" if self.language == "ar" else "Enter the name or ID of the user you want to steal from:",
+            color=discord.Color.red()
+        )
+        
+        # إضافة تحذير
+        embed.add_field(
+            name="⚠️ تحذير" if self.language == "ar" else "⚠️ Warning",
+            value="تذكر أن السرقة قد تفشل وتخسر جزءاً من أموالك!" if self.language == "ar" else "Remember that stealing may fail and you could lose some money!",
+            inline=False
+        )
+        
+        await interaction.response.edit_message(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=30.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🕵️ جاري محاولة السرقة..." if self.language == "ar" else "🕵️ Attempting to steal...",
+                description=f"محاولة سرقة `{response.content}`..." if self.language == "ar" else f"Attempting to steal from `{response.content}`...",
+                color=discord.Color.gold()
+            )
+            
+            await self.message.edit(embed=wait_embed)
+            
+            # تنفيذ أمر السرقة
+            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
+            if steal_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(steal_command, target=response.content)
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+                
+                # إعادة إنشاء القائمة بعد فترة
+                await asyncio.sleep(5)
+                await self.show_menu("economy")
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ" if self.language == "ar" else "❌ Error",
+                    description="عذراً، أمر السرقة غير متاح حالياً." if self.language == "ar" else "Sorry, the steal command is not available.",
+                    color=discord.Color.red()
+                )
+                await self.message.edit(embed=error_embed)
+                
+                # إعادة إنشاء القائمة بعد فترة
+                await asyncio.sleep(3)
+                await self.show_menu("economy")
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة" if self.language == "ar" else "⏰ Timeout",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى." if self.language == "ar" else "Timeout. Please try again.",
+                color=discord.Color.orange()
+            )
+            await self.message.edit(embed=timeout_embed)
+            
+            # إعادة إنشاء القائمة بعد فترة
+            await asyncio.sleep(3)
+            await self.show_menu("economy")
+            
+    async def _language_settings(self, interaction):
+        """إعدادات اللغة"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # تنفيذ أمر اللغة
+        language_command = self.bot.get_command('لغة') or self.bot.get_command('language')
+        if language_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(language_command)
+        else:
+            msg = "عذراً، أمر إعدادات اللغة غير متاح حالياً." if self.language == "ar" else "Sorry, the language settings command is not available."
+            await interaction.followup.send(msg)
+            
+    async def _play_fishing(self, interaction):
+        """لعب لعبة الصيد"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # تنفيذ أمر الصيد
+        fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
+        if fishing_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(fishing_command)
+        else:
+            msg = "عذراً، لعبة الصيد غير متاحة حالياً." if self.language == "ar" else "Sorry, the fishing game is not available."
+            await interaction.followup.send(msg)
+            
+    async def _play_dice(self, interaction):
+        """لعب لعبة النرد"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            error_msg = "هذه الأزرار مخصصة لصاحب الأمر فقط." if self.language == "ar" else "These buttons are only for the command user."
+            return await interaction.response.send_message(error_msg, ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.response.defer()
+        await self.message.delete()
+        
+        # تنفيذ أمر النرد
+        dice_command = self.bot.get_command('نرد') or self.bot.get_command('dice')
+        if dice_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(dice_command)
+        else:
+            msg = "عذراً، لعبة النرد غير متاحة حالياً." if self.language == "ar" else "Sorry, the dice game is not available."
+            await interaction.followup.send(msg)
+
 class MainMenu(commands.Cog):
     """أوامر القوائم الرئيسية"""
     
