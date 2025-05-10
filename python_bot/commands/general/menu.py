@@ -446,7 +446,66 @@ class BankMenuView(ui.View):
         except asyncio.TimeoutError:
             await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
     
-    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.danger)
+    @ui.button(label="🛡️ حماية", style=discord.ButtonStyle.success)
+    async def protection_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الحماية من السرقة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة
+        await interaction.message.delete()
+        
+        # تنفيذ أمر الحماية
+        protection_command = self.bot.get_command('حماية') or self.bot.get_command('protection')
+        if protection_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(protection_command)
+        else:
+            await interaction.followup.send("عذراً، أمر الحماية غير متاح حالياً.")
+    
+    @ui.button(label="🕵️ سرقة", style=discord.ButtonStyle.danger)
+    async def steal_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر السرقة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.message.delete()
+        
+        # إعداد أمر السرقة
+        message = await interaction.followup.send("يرجى إدخال اسم المستخدم الذي تريد سرقته:")
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=30.0
+            )
+            
+            # تنفيذ أمر السرقة
+            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
+            if steal_command:
+                ctx = await self.bot.get_context(response)
+                
+                # معالجة معلمات الأمر
+                if len(response.content.strip()) > 0:
+                    target = response.content.strip()
+                    await ctx.invoke(steal_command, target=target)
+                else:
+                    await interaction.followup.send("يرجى تحديد اسم المستخدم للسرقة.")
+                
+                # حذف رسالة الطلب
+                try:
+                    await message.delete()
+                except:
+                    pass
+            else:
+                await interaction.followup.send("عذراً، أمر السرقة غير متاح حالياً.")
+        except asyncio.TimeoutError:
+            await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
+    
+    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.secondary)
     async def back_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر الرجوع للقائمة الرئيسية"""
         if interaction.user.id != self.ctx.author.id:
