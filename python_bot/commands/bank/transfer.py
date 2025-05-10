@@ -26,13 +26,17 @@ class Transfer(commands.Cog):
         
         المعلمات:
             recipient (discord.Member): المستخدم المراد التحويل إليه
-            amount (str): المبلغ المراد تحويله (يمكن استخدام الأرقام أو الكلمات مثل 'كل' أو 'all')
+            amount (str): المبلغ المراد تحويله (يمكن استخدام الأرقام أو الكلمات مثل 'كل' أو 'all' أو 'نصف' أو 'ربع')
         
         أمثلة:
             !تحويل @User 100
             !تحويل @User كل
+            !تحويل @User نصف
+            !تحويل @User ربع
             !transfer @User 500
             !transfer @User all
+            !transfer @User half
+            !transfer @User quarter
         """
         # التحقق من وجود جميع المعلمات المطلوبة
         if not recipient:
@@ -75,20 +79,38 @@ class Transfer(commands.Cog):
             sender_data = await self._get_user_data(ctx.author.id)
             
             # تحويل المبلغ إلى رقم
-            if amount.lower() in ['all', 'كل', 'الكل']:
+            amount = amount.lower()
+            
+            # كلمات المكافئة للمبلغ الكامل
+            full_amount_keywords = ['all', 'كل', 'الكل', 'كامل']
+            half_amount_keywords = ['half', 'نصف', 'النصف', '1/2']
+            quarter_amount_keywords = ['quarter', 'ربع', 'الربع', '1/4']
+            
+            if any(keyword in amount for keyword in full_amount_keywords):
                 transfer_amount = sender_data['balance']
+                amount_description = "كامل المبلغ"
+            elif any(keyword in amount for keyword in half_amount_keywords):
+                transfer_amount = int(sender_data['balance'] / 2)
+                amount_description = "نصف المبلغ"
+            elif any(keyword in amount for keyword in quarter_amount_keywords):
+                transfer_amount = int(sender_data['balance'] / 4)
+                amount_description = "ربع المبلغ"
             else:
                 # إزالة أي علامات ترقيم أو فواصل
                 cleaned_amount = re.sub(r'[^\d]', '', amount)
                 if not cleaned_amount:
                     embed = discord.Embed(
                         title="❌ خطأ",
-                        description="يرجى إدخال مبلغ صحيح للتحويل.",
+                        description="يرجى إدخال مبلغ صحيح للتحويل أو استخدام أحد الكلمات التالية:\n"
+                                    "- `كل` أو `all` للمبلغ الكامل\n"
+                                    "- `نصف` أو `half` لنصف المبلغ\n"
+                                    "- `ربع` أو `quarter` لربع المبلغ",
                         color=discord.Color.red()
                     )
                     return await ctx.send(embed=embed)
                 
                 transfer_amount = int(cleaned_amount)
+                amount_description = f"{transfer_amount:,} {self.currency_emoji}"
             
             # التحقق من صحة المبلغ
             if transfer_amount <= 0:
@@ -156,7 +178,7 @@ class Transfer(commands.Cog):
             # إنشاء رسالة نجاح التحويل
             embed = discord.Embed(
                 title="✅ تم التحويل بنجاح",
-                description=f"تم تحويل **{transfer_amount:,}** {self.currency_emoji} إلى {recipient.mention}.",
+                description=f"تم تحويل **{transfer_amount:,}** {self.currency_emoji} ({amount_description}) إلى {recipient.mention}.",
                 color=discord.Color.green()
             )
             
@@ -251,5 +273,5 @@ class Transfer(commands.Cog):
         return user_data
 
 async def setup(bot):
-    """إعداد الأمر وإضافته إلى البوت"""
+    """إعداد الصنف وإضافته إلى البوت"""
     await bot.add_cog(Transfer(bot)) 
