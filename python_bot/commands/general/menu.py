@@ -12,8 +12,10 @@ class MainMenuView(ui.View):
         super().__init__(timeout=timeout)
         self.bot = bot
         self.ctx = ctx
+        # إضافة زر للتشغيل السريع
+        self.add_item(QuickPlayButton())
     
-    @ui.button(label="🎵 الموسيقى", style=discord.ButtonStyle.primary)
+    @ui.button(label="🎵 الموسيقى", style=discord.ButtonStyle.primary, emoji="🎵")
     async def music_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر قائمة الموسيقى"""
         # التحقق من المستخدم
@@ -44,7 +46,7 @@ class MainMenuView(ui.View):
         
         await interaction.response.edit_message(embed=embed, view=music_view)
     
-    @ui.button(label="🎮 الألعاب", style=discord.ButtonStyle.success)
+    @ui.button(label="🎮 الألعاب", style=discord.ButtonStyle.success, emoji="🎮")
     async def games_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر قائمة الألعاب"""
         # التحقق من المستخدم
@@ -75,7 +77,7 @@ class MainMenuView(ui.View):
         
         await interaction.response.edit_message(embed=embed, view=games_view)
     
-    @ui.button(label="💰 البنك", style=discord.ButtonStyle.secondary)
+    @ui.button(label="💰 البنك", style=discord.ButtonStyle.secondary, emoji="💰")
     async def bank_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر قائمة البنك"""
         # التحقق من المستخدم
@@ -114,7 +116,7 @@ class MainMenuView(ui.View):
         
         await interaction.response.edit_message(embed=embed, view=bank_view)
     
-    @ui.button(label="🔗 انضمام لرابط", style=discord.ButtonStyle.primary)
+    @ui.button(label="🔗 انضمام لرابط", style=discord.ButtonStyle.primary, emoji="🔗", row=1)
     async def join_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر الانضمام لرابط دعوة"""
         # التحقق من المستخدم
@@ -171,7 +173,7 @@ class MainMenuView(ui.View):
         except asyncio.TimeoutError:
             await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
     
-    @ui.button(label="❌ إغلاق", style=discord.ButtonStyle.danger)
+    @ui.button(label="❌ إغلاق", style=discord.ButtonStyle.danger, emoji="❌", row=1)
     async def close_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر إغلاق القائمة"""
         # التحقق من المستخدم
@@ -194,6 +196,131 @@ class MainMenuView(ui.View):
             pass
 
 
+# إضافة زر للتشغيل السريع
+class QuickPlayButton(ui.Button):
+    """زر التشغيل السريع"""
+    
+    def __init__(self):
+        super().__init__(
+            style=discord.ButtonStyle.success,
+            label="▶️ تشغيل سريع للأغاني",
+            emoji="▶️",
+            row=1
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        # التحقق من المستخدم
+        view = self.view
+        if interaction.user.id != view.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # التحقق ما إذا كان المستخدم في قناة صوتية
+        if not interaction.user.voice:
+            return await interaction.response.send_message(
+                "يجب أن تكون في قناة صوتية أولاً!",
+                ephemeral=True
+            )
+        
+        # حذف رسالة القائمة
+        await interaction.message.delete()
+        
+        # إعداد واجهة التشغيل السريع
+        embed = discord.Embed(
+            title="▶️ التشغيل السريع",
+            description="أدخل اسم الأغنية أو رابط YouTube للتشغيل مباشرة:",
+            color=discord.Color.green()
+        )
+        
+        # إضافة تلميح حول التشغيل
+        embed.add_field(
+            name="🔊 ملاحظة",
+            value="سيتم الانضمام تلقائياً إلى قناتك الصوتية الحالية وتشغيل الموسيقى فوراً!",
+            inline=False
+        )
+        
+        # إضافة أمثلة
+        embed.add_field(
+            name="📝 أمثلة",
+            value="اكتب اسم أغنية: `أغنية عربية`\n"
+                  "أو رابط: `https://www.youtube.com/...`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await view.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == view.ctx.author.id and m.channel.id == view.ctx.channel.id,
+                timeout=60.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🎵 جاري تشغيل الموسيقى...",
+                description=f"جاري تشغيل: `{response.content}`",
+                color=discord.Color.blue()
+            )
+            
+            wait_embed.set_footer(text="يرجى الانتظار قليلاً...")
+            await message.edit(embed=wait_embed)
+            
+            # محاولة الانضمام للقناة الصوتية أولاً إذا لم يكن البوت متصلاً
+            voice_channel = interaction.user.voice.channel
+            voice_cog = view.bot.get_cog('VoiceControl')
+            if voice_cog:
+                voice_ctx = await view.bot.get_context(view.ctx.message)
+                voice_command = view.bot.get_command('صوت')
+                if voice_command and not (hasattr(view.ctx.guild, 'voice_client') and view.ctx.guild.voice_client):
+                    try:
+                        await voice_ctx.invoke(voice_command, channel_or_volume=str(voice_channel.id))
+                    except Exception as e:
+                        print(f"Error joining voice channel: {e}")
+            
+            # تنفيذ أمر التشغيل
+            play_command = view.bot.get_command('تشغيل') or view.bot.get_command('play')
+            if play_command:
+                ctx = await view.bot.get_context(response)
+                await ctx.invoke(play_command, query=response.content)
+                
+                # تأكيد التشغيل
+                success_embed = discord.Embed(
+                    title="✅ تم التشغيل بنجاح",
+                    description=f"تم تشغيل: `{response.content}`",
+                    color=discord.Color.green()
+                )
+                success_embed.set_footer(text="استمتع بالموسيقى! استخدم !تخطي للانتقال للأغنية التالية")
+                
+                try:
+                    await message.edit(embed=success_embed)
+                    # مسح الرسالة بعد 5 ثوانٍ
+                    await asyncio.sleep(5)
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="عذراً، أمر التشغيل غير متاح حالياً.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى باستخدام `!p` أو `!تشغيل`",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
+
+
 class MusicMenuView(ui.View):
     """واجهة قائمة الموسيقى التفاعلية"""
     
@@ -202,11 +329,18 @@ class MusicMenuView(ui.View):
         self.bot = bot
         self.ctx = ctx
     
-    @ui.button(label="▶️ تشغيل", style=discord.ButtonStyle.primary)
+    @ui.button(label="▶️ تشغيل", style=discord.ButtonStyle.primary, emoji="▶️")
     async def play_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر تشغيل الموسيقى"""
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # التحقق ما إذا كان المستخدم في قناة صوتية
+        if not interaction.user.voice:
+            return await interaction.response.send_message(
+                "يجب أن تكون في قناة صوتية أولاً!",
+                ephemeral=True
+            )
         
         # إغلاق القائمة الحالية
         await interaction.message.delete()
@@ -258,14 +392,36 @@ class MusicMenuView(ui.View):
             
             await message.edit(embed=wait_embed)
             
+            # محاولة الانضمام للقناة الصوتية أولاً إذا لم يكن البوت متصلاً
+            voice_channel = interaction.user.voice.channel
+            voice_cog = self.bot.get_cog('VoiceControl')
+            if voice_cog:
+                voice_ctx = await self.bot.get_context(self.ctx.message)
+                voice_command = self.bot.get_command('صوت')
+                if voice_command and not (hasattr(self.ctx.guild, 'voice_client') and self.ctx.guild.voice_client):
+                    try:
+                        await voice_ctx.invoke(voice_command, channel_or_volume=str(voice_channel.id))
+                    except Exception as e:
+                        print(f"Error joining voice channel: {e}")
+            
             # تنفيذ أمر التشغيل
             play_command = self.bot.get_command('تشغيل') or self.bot.get_command('play')
             if play_command:
                 ctx = await self.bot.get_context(response)
                 await ctx.invoke(play_command, query=response.content)
                 
-                # حذف رسالة الطلب بعد التشغيل
+                # تأكيد التشغيل
+                success_embed = discord.Embed(
+                    title="✅ تم التشغيل بنجاح",
+                    description=f"تم تشغيل: `{response.content}`",
+                    color=discord.Color.green()
+                )
+                success_embed.set_footer(text="استمتع بالموسيقى! استخدم !تخطي للانتقال للأغنية التالية")
+                
                 try:
+                    await message.edit(embed=success_embed)
+                    # مسح الرسالة بعد 5 ثوانٍ
+                    await asyncio.sleep(5)
                     await message.delete()
                 except:
                     pass
@@ -386,7 +542,7 @@ class GamesMenuView(ui.View):
         self.bot = bot
         self.ctx = ctx
     
-    @ui.button(label="🎣 صيد", style=discord.ButtonStyle.primary)
+    @ui.button(label="🎣 صيد", style=discord.ButtonStyle.primary, emoji="🎣")
     async def fishing_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة الصيد"""
         if interaction.user.id != self.ctx.author.id:
@@ -408,17 +564,24 @@ class GamesMenuView(ui.View):
             inline=False
         )
         
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
         
         # تنفيذ أمر الصيد
         fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
         if fishing_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(fishing_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، لعبة الصيد غير متاحة حالياً.")
     
-    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary)
+    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="🏇")
     async def horserace_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة سباق الخيول"""
         if interaction.user.id != self.ctx.author.id:
@@ -427,15 +590,37 @@ class GamesMenuView(ui.View):
         # إغلاق القائمة
         await interaction.message.delete()
         
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🏇 سباق الخيول",
+            description="جاري بدء سباق الخيول...",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!سباق` أو `!horserace` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        
         # تنفيذ أمر سباق الخيول
         horserace_command = self.bot.get_command('سباق') or self.bot.get_command('horserace')
         if horserace_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(horserace_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، لعبة سباق الخيول غير متاحة حالياً.")
     
-    @ui.button(label="🎲 النرد", style=discord.ButtonStyle.primary)
+    @ui.button(label="🎲 النرد", style=discord.ButtonStyle.primary, emoji="🎲")
     async def dice_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة النرد"""
         if interaction.user.id != self.ctx.author.id:
@@ -444,15 +629,37 @@ class GamesMenuView(ui.View):
         # إغلاق القائمة
         await interaction.message.delete()
         
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🎲 لعبة النرد",
+            description="جاري بدء لعبة النرد...",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!نرد` أو `!dice` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        
         # تنفيذ أمر النرد
         dice_command = self.bot.get_command('نرد') or self.bot.get_command('dice')
         if dice_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(dice_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، لعبة النرد غير متاحة حالياً.")
     
-    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary)
+    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary, emoji="🃏")
     async def blackjack_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة بلاك جاك"""
         if interaction.user.id != self.ctx.author.id:
@@ -461,15 +668,37 @@ class GamesMenuView(ui.View):
         # إغلاق القائمة
         await interaction.message.delete()
         
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🃏 لعبة بلاك جاك",
+            description="جاري بدء لعبة بلاك جاك...",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!بلاك_جاك` أو `!blackjack` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        
         # تنفيذ أمر بلاك جاك
         blackjack_command = self.bot.get_command('بلاك_جاك') or self.bot.get_command('blackjack')
         if blackjack_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(blackjack_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، لعبة بلاك جاك غير متاحة حالياً.")
     
-    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.danger)
+    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.danger, emoji="🔙")
     async def back_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر الرجوع للقائمة الرئيسية"""
         if interaction.user.id != self.ctx.author.id:
@@ -484,6 +713,41 @@ class GamesMenuView(ui.View):
             description="اختر أحد الخيارات أدناه:",
             color=discord.Color.blue()
         )
+        
+        # إضافة معلومات الفئات
+        embed.add_field(
+            name="🎵 الموسيقى",
+            value="تشغيل الموسيقى والتحكم بالقنوات الصوتية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎮 الألعاب",
+            value="العاب متنوعة لربح العملات",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="💰 البنك",
+            value="التحكم برصيدك والسرقة والحماية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="▶️ تشغيل سريع",
+            value="تشغيل موسيقى بدون خطوات إضافية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔗 الانضمام لرابط",
+            value="الانضمام إلى روم من خلال رابط دعوة",
+            inline=True
+        )
+        
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
         await interaction.response.edit_message(embed=embed, view=main_view)
 
 
@@ -495,7 +759,7 @@ class BankMenuView(ui.View):
         self.bot = bot
         self.ctx = ctx
     
-    @ui.button(label="💵 الرصيد", style=discord.ButtonStyle.primary)
+    @ui.button(label="💵 الرصيد", style=discord.ButtonStyle.primary, emoji="💵")
     async def balance_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر عرض الرصيد"""
         if interaction.user.id != self.ctx.author.id:
@@ -517,17 +781,24 @@ class BankMenuView(ui.View):
             inline=False
         )
         
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
         
         # تنفيذ أمر الرصيد
         balance_command = self.bot.get_command('رصيد') or self.bot.get_command('balance')
         if balance_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(balance_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، أمر الرصيد غير متاح حالياً.")
     
-    @ui.button(label="🎁 المكافأة اليومية", style=discord.ButtonStyle.primary)
+    @ui.button(label="🎁 المكافأة اليومية", style=discord.ButtonStyle.primary, emoji="🎁")
     async def daily_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر المكافأة اليومية"""
         if interaction.user.id != self.ctx.author.id:
@@ -536,15 +807,157 @@ class BankMenuView(ui.View):
         # إغلاق القائمة
         await interaction.message.delete()
         
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🎁 المكافأة اليومية",
+            description="جاري استلام المكافأة اليومية...",
+            color=discord.Color.gold()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!يومي` أو `!daily` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        
         # تنفيذ أمر المكافأة اليومية
         daily_command = self.bot.get_command('يومي') or self.bot.get_command('daily')
         if daily_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(daily_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
         else:
             await interaction.followup.send("عذراً، أمر المكافأة اليومية غير متاح حالياً.")
     
-    @ui.button(label="💸 تحويل", style=discord.ButtonStyle.primary)
+    @ui.button(label="🛡️ حماية", style=discord.ButtonStyle.success, emoji="🛡️")
+    async def protection_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الحماية من السرقة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة
+        await interaction.message.delete()
+        
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🛡️ نظام الحماية",
+            description="جاري فتح خيارات الحماية...",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر `!حماية` أو `!protection` مباشرة في المرات القادمة!",
+            inline=False
+        )
+        
+        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # تنفيذ أمر الحماية
+        protection_command = self.bot.get_command('حماية') or self.bot.get_command('protection')
+        if protection_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(protection_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await start_message.delete()
+            except:
+                pass
+        else:
+            await interaction.followup.send("عذراً، أمر الحماية غير متاح حالياً.")
+    
+    @ui.button(label="🕵️ سرقة", style=discord.ButtonStyle.danger, emoji="🕵️")
+    async def steal_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر السرقة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.message.delete()
+        
+        # إعداد أمر السرقة
+        embed = discord.Embed(
+            title="🕵️ سرقة",
+            description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:",
+            color=discord.Color.red()
+        )
+        
+        # إضافة معلومات عن السرقة
+        embed.add_field(
+            name="⚠️ تحذير",
+            value="تذكر أن السرقة قد تفشل وتخسر جزءاً من أموالك!",
+            inline=False
+        )
+        
+        # إضافة تلميح للاستخدام المباشر
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر مباشرة: `!سرقة @اسم_المستخدم`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=30.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🕵️ جاري محاولة السرقة...",
+                description=f"محاولة سرقة `{response.content}`...",
+                color=discord.Color.gold()
+            )
+            
+            await message.edit(embed=wait_embed)
+            
+            # تنفيذ أمر السرقة
+            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
+            if steal_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(steal_command, target=response.content)
+                
+                # حذف رسائل البوت
+                try:
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="عذراً، أمر السرقة غير متاح حالياً.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى باستخدام `!سرقة @اسم_المستخدم`",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
+    
+    @ui.button(label="💸 تحويل", style=discord.ButtonStyle.primary, emoji="💸")
     async def transfer_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر التحويل"""
         if interaction.user.id != self.ctx.author.id:
@@ -554,7 +967,28 @@ class BankMenuView(ui.View):
         await interaction.message.delete()
         
         # إعداد أمر التحويل
-        message = await interaction.followup.send("يرجى إدخال اسم المستخدم والمبلغ للتحويل (مثال: @User 100):")
+        embed = discord.Embed(
+            title="💸 تحويل أموال",
+            description="يرجى إدخال اسم المستخدم والمبلغ للتحويل:",
+            color=discord.Color.blue()
+        )
+        
+        # شرح الصيغة
+        embed.add_field(
+            name="📝 صيغة التحويل",
+            value="اكتب اسم المستخدم متبوعاً بالمبلغ:\n"
+                 "`@اسم_المستخدم 1000`",
+            inline=False
+        )
+        
+        # إضافة تلميح للاستخدام المباشر
+        embed.add_field(
+            name="💡 تلميح",
+            value="يمكنك استخدام الأمر مباشرة: `!تحويل @اسم_المستخدم 1000`",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
         
         # انتظار رد المستخدم
         try:
@@ -563,6 +997,15 @@ class BankMenuView(ui.View):
                 check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
                 timeout=30.0
             )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="💸 جاري التحويل...",
+                description=f"محاولة تحويل أموال: `{response.content}`",
+                color=discord.Color.gold()
+            )
+            
+            await message.edit(embed=wait_embed)
             
             # تنفيذ أمر التحويل
             transfer_command = self.bot.get_command('تحويل') or self.bot.get_command('transfer')
@@ -577,78 +1020,41 @@ class BankMenuView(ui.View):
                     
                     await ctx.invoke(transfer_command, recipient=recipient, amount=amount)
                 else:
-                    await interaction.followup.send("الصيغة غير صحيحة. يرجى استخدام الصيغة: @User 100")
+                    error_embed = discord.Embed(
+                        title="❌ خطأ في الصيغة",
+                        description="الصيغة غير صحيحة. يرجى استخدام الصيغة: `@اسم_المستخدم 1000`",
+                        color=discord.Color.red()
+                    )
+                    await message.edit(embed=error_embed)
                 
-                # حذف رسالة الطلب
+                # حذف رسائل البوت بعد فترة
                 try:
+                    await asyncio.sleep(5)
                     await message.delete()
                 except:
                     pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
             else:
-                await interaction.followup.send("عذراً، أمر التحويل غير متاح حالياً.")
+                error_embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="عذراً، أمر التحويل غير متاح حالياً.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
         except asyncio.TimeoutError:
-            await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
-    
-    @ui.button(label="🛡️ حماية", style=discord.ButtonStyle.success)
-    async def protection_button(self, interaction: discord.Interaction, button: ui.Button):
-        """زر الحماية من السرقة"""
-        if interaction.user.id != self.ctx.author.id:
-            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
-        
-        # إغلاق القائمة
-        await interaction.message.delete()
-        
-        # تنفيذ أمر الحماية
-        protection_command = self.bot.get_command('حماية') or self.bot.get_command('protection')
-        if protection_command:
-            ctx = await self.bot.get_context(self.ctx.message)
-            await ctx.invoke(protection_command)
-        else:
-            await interaction.followup.send("عذراً، أمر الحماية غير متاح حالياً.")
-    
-    @ui.button(label="🕵️ سرقة", style=discord.ButtonStyle.danger)
-    async def steal_button(self, interaction: discord.Interaction, button: ui.Button):
-        """زر السرقة"""
-        if interaction.user.id != self.ctx.author.id:
-            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
-        
-        # إغلاق القائمة الحالية
-        await interaction.message.delete()
-        
-        # إعداد أمر السرقة
-        message = await interaction.followup.send("يرجى إدخال اسم المستخدم الذي تريد سرقته:")
-        
-        # انتظار رد المستخدم
-        try:
-            response = await self.bot.wait_for(
-                'message',
-                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
-                timeout=30.0
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى باستخدام `!تحويل @اسم_المستخدم 1000`",
+                color=discord.Color.orange()
             )
-            
-            # تنفيذ أمر السرقة
-            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
-            if steal_command:
-                ctx = await self.bot.get_context(response)
-                
-                # معالجة معلمات الأمر
-                if len(response.content.strip()) > 0:
-                    target = response.content.strip()
-                    await ctx.invoke(steal_command, target=target)
-                else:
-                    await interaction.followup.send("يرجى تحديد اسم المستخدم للسرقة.")
-                
-                # حذف رسالة الطلب
-                try:
-                    await message.delete()
-                except:
-                    pass
-            else:
-                await interaction.followup.send("عذراً، أمر السرقة غير متاح حالياً.")
-        except asyncio.TimeoutError:
-            await message.edit(content="انتهت المهلة. يرجى المحاولة مرة أخرى.")
+            await message.edit(embed=timeout_embed)
     
-    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.secondary)
+    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.secondary, emoji="🔙")
     async def back_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر الرجوع للقائمة الرئيسية"""
         if interaction.user.id != self.ctx.author.id:
@@ -663,6 +1069,41 @@ class BankMenuView(ui.View):
             description="اختر أحد الخيارات أدناه:",
             color=discord.Color.blue()
         )
+        
+        # إضافة معلومات الفئات
+        embed.add_field(
+            name="🎵 الموسيقى",
+            value="تشغيل الموسيقى والتحكم بالقنوات الصوتية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎮 الألعاب",
+            value="العاب متنوعة لربح العملات",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="💰 البنك",
+            value="التحكم برصيدك والسرقة والحماية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="▶️ تشغيل سريع",
+            value="تشغيل موسيقى بدون خطوات إضافية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔗 الانضمام لرابط",
+            value="الانضمام إلى روم من خلال رابط دعوة",
+            inline=True
+        )
+        
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
         await interaction.response.edit_message(embed=embed, view=main_view)
 
 
@@ -674,7 +1115,7 @@ class Menu(commands.Cog):
     
     @commands.command(
         name="h",
-        aliases=["menu", "قائمة"],
+        aliases=["menu", "قائمة", "مساعدة"],
         description="عرض قائمة تفاعلية للأوامر"
     )
     async def menu(self, ctx):
@@ -706,6 +1147,12 @@ class Menu(commands.Cog):
         embed.add_field(
             name="💰 البنك",
             value="التحكم برصيدك والسرقة والحماية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="▶️ تشغيل سريع",
+            value="تشغيل موسيقى بدون خطوات إضافية",
             inline=True
         )
         
