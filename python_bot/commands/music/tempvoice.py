@@ -103,6 +103,42 @@ class TempVoice(commands.Cog):
     async def on_ready(self):
         # إعادة تسجيل واجهات التحكم بعد إعادة تشغيل البوت
         self.bot.add_view(MusicControlView(self, None, None))
+        
+        # الاتصال بخادم Lavalink
+        try:
+            # استخدام خادم Lavalink عام
+            nodes = [
+                wavelink.Node(
+                    uri="https://lavalink.lexnet.cc",  # خادم Lavalink عام
+                    password="lexn3tl4v4l1nk"         # كلمة المرور للخادم العام
+                ),
+                # يمكن إضافة خوادم أخرى كاحتياطي
+                wavelink.Node(
+                    uri="https://lavalink.devz.cloud",
+                    password="devz.cloud"
+                ),
+                wavelink.Node(
+                    uri="https://lavalink.api.xgstudios.net",
+                    password="xgstudios.net"
+                )
+            ]
+            await wavelink.Pool.connect(nodes=nodes, client=self.bot)
+            print("[TempVoice] تم الاتصال بخادم Lavalink بنجاح")
+        except Exception as e:
+            print(f"[TempVoice] خطأ في الاتصال بخادم Lavalink: {e}")
+            # محاولة الاتصال بخادم محلي إذا فشل الاتصال بالخوادم العامة
+            try:
+                local_node = wavelink.Node(
+                    uri="http://localhost:2333",
+                    password="youshallnotpass"
+                )
+                await wavelink.Pool.connect(nodes=[local_node], client=self.bot)
+                print("[TempVoice] تم الاتصال بخادم Lavalink المحلي بنجاح")
+            except Exception as e2:
+                print(f"[TempVoice] خطأ في الاتصال بخادم Lavalink المحلي: {e2}")
+                print("[TempVoice] لا يمكن الاتصال بأي خادم Lavalink. لن تعمل ميزة تشغيل الموسيقى.")
+
+
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
