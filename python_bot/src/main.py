@@ -7,22 +7,38 @@ import asyncio
 import logging
 from pathlib import Path
 
+# إعداد التسجيل أولاً
+from utils.logger import setup_logger
+logger = setup_logger()
+
 # إضافة المجلد الرئيسي إلى مسار البحث
-sys.path.append(str(Path(__file__).parent.parent))
+parent_dir = Path(__file__).parent.parent
+sys.path.append(str(parent_dir))
+logger.info(f"تم إضافة المجلد الرئيسي إلى مسار البحث: {parent_dir}")
 
 # استيراد الوحدات اللازمة
-from utils.logger import setup_logger
 from utils.config_loader import load_config, create_config_dirs
 
 # التأكد من إنشاء المجلدات اللازمة
 create_config_dirs()
 
-# تحميل متغيرات البيئة
+# تحميل متغيرات البيئة من .env إذا كان موجودًا
 from dotenv import load_dotenv
-load_dotenv()
+env_path = Path(".env")
+if env_path.exists():
+    logger.info("تم العثور على ملف .env، جاري تحميله...")
+    load_dotenv()
+    logger.info("تم تحميل ملف .env بنجاح")
+else:
+    logger.info("ملف .env غير موجود. استخدام متغيرات البيئة مباشرة...")
 
-# إعداد التسجيل
-logger = setup_logger()
+# تسجيل متغيرات البيئة المتاحة (بدون قيم)
+available_env_vars = []
+if os.getenv('TOKEN'): available_env_vars.append('TOKEN')
+if os.getenv('MONGODB_URI'): available_env_vars.append('MONGODB_URI')
+if os.getenv('PREFIX'): available_env_vars.append('PREFIX')
+if os.getenv('DB_NAME'): available_env_vars.append('DB_NAME')
+logger.info(f"متغيرات البيئة المتاحة: {', '.join(available_env_vars)}")
 
 # استيراد المكتبات بعد إعداد التسجيل
 try:
@@ -46,8 +62,12 @@ intents.message_content = True
 intents.members = True
 intents.guilds = True
 
+# التحقق من وجود PREFIX في متغيرات البيئة
+prefix = os.getenv("PREFIX", "!")
+logger.info(f"استخدام بادئة الأوامر: {prefix}")
+
 bot = commands.Bot(
-    command_prefix=os.getenv("PREFIX", "!"),
+    command_prefix=prefix,
     intents=intents,
     help_command=None
 )
@@ -229,39 +249,55 @@ async def start_bot():
     mongodb_uri = os.getenv("MONGODB_URI")
     if mongodb_uri:
         try:
+            logger.info("جاري محاولة الاتصال بقاعدة البيانات MongoDB...")
+            
+            # طباعة معلومات عن MongoDB URI (بدون كشف معلومات حساسة)
+            if '@' in mongodb_uri:
+                uri_host = mongodb_uri.split('@')[1].split('/')[0]
+                logger.info(f"MongoDB مضيف: {uri_host}")
+            else:
+                protocol = mongodb_uri.split('://')[0] if '://' in mongodb_uri else 'unknown'
+                logger.info(f"MongoDB بروتوكول: {protocol}")
+                
             # إنشاء اتصال MongoDB
             mongo_client = motor.motor_asyncio.AsyncIOMotorClient(
                 mongodb_uri,
                 serverSelectionTimeoutMS=5000
             )
+            
             # فحص الاتصال
             await mongo_client.server_info()
             
             # تعيين قاعدة البيانات في البوت
             db_name = os.getenv("DB_NAME", "discord_bot")
             bot.db = mongo_client[db_name]
-            logger.info("تم الاتصال بقاعدة البيانات MongoDB")
+            logger.info(f"✅ تم الاتصال بنجاح بقاعدة البيانات MongoDB (قاعدة البيانات: {db_name})")
+            
+            # التحقق من الوصول إلى المجموعات في قاعدة البيانات
+            collections = await bot.db.list_collection_names()
+            logger.info(f"المجموعات المتاحة في قاعدة البيانات: {collections}")
+            
         except Exception as e:
-            logger.error(f"فشل الاتصال بقاعدة البيانات: {str(e)}")
-            logger.warning("متابعة التشغيل بدون قاعدة بيانات")
+            logger.error(f"❌ فشل الاتصال بقاعدة البيانات: {str(e)}")
+            logger.warning("متابعة التشغيل بدون قاعدة بيانات. بعض الوظائف قد لا تعمل.")
     else:
-        logger.warning("لم يتم تعيين MONGODB_URI، متابعة التشغيل بدون قاعدة بيانات")
+        logger.warning("⚠️ لم يتم تعيين MONGODB_URI، متابعة التشغيل بدون قاعدة بيانات")
     
     # محاولة الاتصال بـ Discord
     token = os.getenv("TOKEN")
-    if not token or token == "dev_token":
-        logger.warning("رمز Discord غير صالح، تشغيل خادم الويب فقط")
-        return False
+    if not token:
+        logger.critical("❌ لم يتم تعيين توكن Discord. لا يمكن بدء تشغيل البوت.")
+        return
     
     try:
+        logger.info("جاري محاولة الاتصال بـ Discord...")
         await bot.start(token)
-        return True
     except discord.LoginFailure:
-        logger.error("رمز Discord غير صالح. تأكد من تعيين TOKEN بشكل صحيح في ملف .env")
-        return False
+        logger.critical("❌ فشل تسجيل الدخول إلى Discord. تأكد من صحة التوكن.")
     except Exception as e:
-        logger.error(f"فشل الاتصال بـ Discord: {str(e)}")
-        return False
+        logger.critical(f"❌ حدث خطأ أثناء بدء تشغيل البوت: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 
 def run_flask():

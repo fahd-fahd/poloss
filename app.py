@@ -6,22 +6,80 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# إضافة المسار الحالي إلى مسار البحث ليتمكن من العثور على الحزم
-current_dir = Path(__file__).parent.absolute()
-sys.path.insert(0, str(current_dir))
-
-# تحميل متغيرات البيئة
-load_dotenv()
-
-# إنشاء تطبيق Flask
-app = Flask(__name__)
-
-# إعداد التسجيل
+# إعداد التسجيل بشكل مبكر
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# إضافة المسار الحالي إلى مسار البحث ليتمكن من العثور على الحزم
+current_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(current_dir))
+
+# تحميل متغيرات البيئة من .env إذا كان موجودًا (للتطوير المحلي)
+# محاولة #1: التحميل المباشر
+env_file = Path(".env")
+if env_file.exists():
+    logger.info("تم العثور على ملف .env، جاري تحميله... (طريقة 1)")
+    load_dotenv(env_file)
+    logger.info("تم تحميل ملف .env بطريقة 1")
+else:
+    logger.info("ملف .env غير موجود. محاولة طريقة أخرى...")
+    
+    # محاولة #2: البحث عن الملف في المجلد الحالي وجميع المجلدات الفرعية
+    env_files = list(Path(".").glob("**/.env"))
+    if env_files:
+        logger.info(f"تم العثور على ملف .env في {env_files[0]}, جاري تحميله... (طريقة 2)")
+        load_dotenv(env_files[0])
+        logger.info("تم تحميل ملف .env بطريقة 2")
+    else:
+        logger.info("لم يتم العثور على ملف .env. استخدام متغيرات البيئة مباشرة...")
+
+# إذا كنا نعمل في Render أو Heroku، يتم تعيين المتغيرات البيئية مباشرة
+if not os.getenv("TOKEN") or not os.getenv("MONGODB_URI"):
+    logger.warning("بعض متغيرات البيئة المهمة غير موجودة، محاولة التحميل اليدوي من .env...")
+    
+    # محاولة #3: التحميل اليدوي للملف
+    try:
+        if env_file.exists():
+            logger.info("محاولة تحميل ملف .env يدويًا... (طريقة 3)")
+            with open(env_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    try:
+                        key, value = line.split('=', 1)
+                        os.environ[key] = value
+                        logger.info(f"تم تعيين متغير البيئة: {key}")
+                    except Exception as e:
+                        logger.warning(f"خطأ في معالجة السطر: {line}, خطأ: {str(e)}")
+            logger.info("تم تحميل ملف .env يدويًا (طريقة 3)")
+    except Exception as e:
+        logger.error(f"خطأ أثناء تحميل ملف .env يدويًا: {str(e)}")
+        logger.info("استخدام متغيرات البيئة المضبوطة على الخادم...")
+
+# تفصيل متغيرات البيئة للتشخيص
+logger.info("==== تشخيص متغيرات البيئة بعد التحميل ====")
+available_vars = []
+important_vars = ["TOKEN", "MONGODB_URI", "PREFIX", "DB_NAME", "NODE_ENV", "PORT", "LOG_LEVEL"]
+for var in important_vars:
+    if os.getenv(var):
+        if var in ["TOKEN", "MONGODB_URI"]:
+            value = os.getenv(var)
+            masked_value = f"{value[:5]}..." if len(value) > 8 else "***"
+            available_vars.append(f"{var}: {masked_value}")
+        else:
+            available_vars.append(f"{var}: {os.getenv(var)}")
+    else:
+        available_vars.append(f"{var}: غير موجود")
+
+logger.info(", ".join(available_vars))
+logger.info("================================")
+
+# إنشاء تطبيق Flask
+app = Flask(__name__)
 
 # متغيرات حالة البوت
 bot_status = {
@@ -58,6 +116,22 @@ def stats():
         "commands_processed": bot_status["commands_processed"],
         "uptime": bot_status["uptime"]
     })
+
+@app.route('/env-debug')
+def env_debug():
+    """نقطة نهاية للتشخيص (متاحة فقط في وضع التطوير)"""
+    if os.getenv('NODE_ENV') != 'production':
+        env_vars = {
+            "TOKEN_EXISTS": bool(os.getenv('TOKEN')),
+            "MONGODB_URI_EXISTS": bool(os.getenv('MONGODB_URI')),
+            "PREFIX": os.getenv('PREFIX', '!'),
+            "DB_NAME": os.getenv('DB_NAME', 'discord_bot'),
+            "NODE_ENV": os.getenv('NODE_ENV', 'development'),
+            "PORT": os.getenv('PORT', '3000'),
+        }
+        return jsonify(env_vars)
+    else:
+        return jsonify({"error": "هذه النقطة غير متاحة في وضع الإنتاج"}), 403
 
 def run_bot():
     """تشغيل البوت في خيط منفصل"""
@@ -100,7 +174,7 @@ def run_bot():
                     logger.error(f"الملف غير موجود: {main_path}")
                     raise FileNotFoundError(f"الملف غير موجود: {main_path}")
             except Exception as e2:
-                logger.error(f"فشل التحميل البديل: {str(e2)}")
+                logger.error(f"فشل التحميل البديل: {str(e)} | {str(e2)}")
                 bot_status["status"] = "error"
                 bot_status["last_error"] = f"فشل تحميل الوحدات: {str(e)} | {str(e2)}"
                 return
