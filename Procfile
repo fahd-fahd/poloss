@@ -1,1 +1,1 @@
-web: gunicorn app:app 
+worker: python3 python_bot/src/main.py

@@ -10,7 +10,7 @@ import wavelink
 from discord.ui import Button, View
 import urllib.parse
 
-class MusicButtons(View]):
+class MusicButtons(View):
     """فئة أزرار التحكم بالموسيقى"""
     
     def __init__(self, bot, ctx, timeout=180):
@@ -110,9 +110,15 @@ class MusicPlayer(commands.Cog):
         except Exception as e:
             print(f"خطأ في الاتصال بخادم Lavalink: {str(e)}")
             try:
-                # محاولة الاتصال بخادم بديل
-                await wavelink.Pool.connect(client=bot, nodes=[
-                    bot=self.bot,
+                await wavelink.Pool.connect(
+                    client=bot,
+                    nodes=[
+                        wavelink.Node(
+                            uri="http://localhost:2333",
+                            password="youshallnotpass"
+                        )
+                    ]
+                )
                     host='lava.link',
                     port=80,
                     password='dismusic',
