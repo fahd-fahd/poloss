@@ -10,7 +10,7 @@ import wavelink
 from discord.ui import Button, View
 import urllib.parse
 
-class MusicButtons(View):
+class MusicButtons(View]):
     """فئة أزرار التحكم بالموسيقى"""
     
     def __init__(self, bot, ctx, timeout=180):
@@ -100,7 +100,7 @@ class MusicPlayer(commands.Cog):
         # لا نحتاج إلى wait_until_ready هنا لأن on_ready يضمن أن البوت جاهز بالفعل
         
         try:
-            await wavelink.NodePool.create_node(
+            await wavelink.Pool.connect(client=bot, nodes=[
                 bot=self.bot,
                 host='lavalink.oops.wtf',
                 port=443,
@@ -111,7 +111,7 @@ class MusicPlayer(commands.Cog):
             print(f"خطأ في الاتصال بخادم Lavalink: {str(e)}")
             try:
                 # محاولة الاتصال بخادم بديل
-                await wavelink.NodePool.create_node(
+                await wavelink.Pool.connect(client=bot, nodes=[
                     bot=self.bot,
                     host='lava.link',
                     port=80,
