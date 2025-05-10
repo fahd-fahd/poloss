@@ -14,6 +14,8 @@ class MainMenuView(ui.View):
         self.ctx = ctx
         # إضافة زر للتشغيل السريع
         self.add_item(QuickPlayButton())
+        # إضافة زر الاختصارات الشاملة
+        self.add_item(QuickShortcutsButton())
     
     @ui.button(label="🎵 الموسيقى", style=discord.ButtonStyle.primary, emoji="🎵")
     async def music_button(self, interaction: discord.Interaction, button: ui.Button):
@@ -1107,6 +1109,379 @@ class BankMenuView(ui.View):
         await interaction.response.edit_message(embed=embed, view=main_view)
 
 
+# إضافة زر الاختصارات الشاملة
+class QuickShortcutsButton(ui.Button):
+    """زر الاختصارات السريعة الشاملة"""
+    
+    def __init__(self):
+        super().__init__(
+            style=discord.ButtonStyle.danger,
+            label="⚡ اختصارات سريعة",
+            emoji="⚡",
+            row=2
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        # التحقق من المستخدم
+        view = self.view
+        if interaction.user.id != view.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء قائمة الاختصارات السريعة
+        shortcuts_view = QuickShortcutsView(view.bot, view.ctx)
+        
+        # تحديث الرسالة بقائمة الاختصارات
+        embed = discord.Embed(
+            title="⚡ الاختصارات السريعة",
+            description="جميع الأوامر الشائعة في مكان واحد! اختر الأمر الذي تريده:",
+            color=discord.Color.purple()
+        )
+        
+        # إضافة توضيح
+        embed.add_field(
+            name="🔰 معلومات",
+            value="هذه القائمة تجمع الأوامر الأكثر استخداماً في مكان واحد للوصول السريع",
+            inline=False
+        )
+        
+        # إضافة صورة البوت
+        if view.bot.user.avatar:
+            embed.set_thumbnail(url=view.bot.user.avatar.url)
+        
+        await interaction.response.edit_message(embed=embed, view=shortcuts_view)
+
+
+# إضافة قائمة الاختصارات السريعة
+class QuickShortcutsView(ui.View):
+    """واجهة الاختصارات السريعة الشاملة"""
+    
+    def __init__(self, bot, ctx, timeout=60):
+        super().__init__(timeout=timeout)
+        self.bot = bot
+        self.ctx = ctx
+
+    @ui.button(label="▶️ تشغيل مباشر", style=discord.ButtonStyle.success, emoji="▶️", row=0)
+    async def quick_play_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر تشغيل موسيقى سريع"""
+        # استدعاء وظيفة التشغيل السريع
+        quick_play = QuickPlayButton()
+        quick_play.view = self.view
+        await quick_play.callback(interaction)
+    
+    @ui.button(label="💰 رصيدي", style=discord.ButtonStyle.primary, emoji="💰", row=0)
+    async def quick_balance_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر عرض الرصيد السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="💵 عرض الرصيد",
+            description="جاري عرض رصيدك...",
+            color=discord.Color.gold()
+        )
+        
+        await interaction.response.defer(ephemeral=True)
+        msg = await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # تنفيذ أمر الرصيد
+        balance_command = self.bot.get_command('رصيد') or self.bot.get_command('balance')
+        if balance_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(balance_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await msg.delete()
+            except:
+                pass
+        else:
+            error_embed = discord.Embed(
+                title="❌ خطأ",
+                description="عذراً، أمر الرصيد غير متاح حالياً.",
+                color=discord.Color.red()
+            )
+            await msg.edit(embed=error_embed)
+    
+    @ui.button(label="🎁 المكافأة اليومية", style=discord.ButtonStyle.primary, emoji="🎁", row=0)
+    async def quick_daily_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر المكافأة اليومية السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🎁 المكافأة اليومية",
+            description="جاري استلام المكافأة اليومية...",
+            color=discord.Color.gold()
+        )
+        
+        await interaction.response.defer(ephemeral=True)
+        msg = await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # تنفيذ أمر المكافأة اليومية
+        daily_command = self.bot.get_command('يومي') or self.bot.get_command('daily')
+        if daily_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(daily_command)
+            
+            # حذف رسالة البدء بعد فترة
+            try:
+                await asyncio.sleep(3)
+                await msg.delete()
+            except:
+                pass
+        else:
+            error_embed = discord.Embed(
+                title="❌ خطأ",
+                description="عذراً، أمر المكافأة اليومية غير متاح حالياً.",
+                color=discord.Color.red()
+            )
+            await msg.edit(embed=error_embed)
+    
+    @ui.button(label="🎲 لعبة سريعة", style=discord.ButtonStyle.primary, emoji="🎲", row=1)
+    async def quick_game_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الألعاب السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء قائمة اختيار الألعاب السريعة
+        games_view = QuickGamesView(self.bot, self.ctx)
+        
+        # تحديث الرسالة
+        embed = discord.Embed(
+            title="🎲 الألعاب السريعة",
+            description="اختر لعبة للبدء فوراً:",
+            color=discord.Color.green()
+        )
+        
+        await interaction.response.edit_message(embed=embed, view=games_view)
+    
+    @ui.button(label="🕵️ سرقة سريعة", style=discord.ButtonStyle.danger, emoji="🕵️", row=1)
+    async def quick_steal_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر السرقة السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة الحالية
+        await interaction.message.delete()
+        
+        # إعداد أمر السرقة
+        embed = discord.Embed(
+            title="🕵️ سرقة سريعة",
+            description="أدخل اسم أو معرف المستخدم الذي تريد سرقته:",
+            color=discord.Color.red()
+        )
+        
+        # إضافة تحذير
+        embed.add_field(
+            name="⚠️ تحذير",
+            value="تذكر أن السرقة قد تفشل وتخسر جزءاً من أموالك!",
+            inline=False
+        )
+        
+        message = await interaction.followup.send(embed=embed)
+        
+        # انتظار رد المستخدم
+        try:
+            response = await self.bot.wait_for(
+                'message',
+                check=lambda m: m.author.id == self.ctx.author.id and m.channel.id == self.ctx.channel.id,
+                timeout=30.0
+            )
+            
+            # رسالة الانتظار
+            wait_embed = discord.Embed(
+                title="🕵️ جاري محاولة السرقة...",
+                description=f"محاولة سرقة `{response.content}`...",
+                color=discord.Color.gold()
+            )
+            
+            await message.edit(embed=wait_embed)
+            
+            # تنفيذ أمر السرقة
+            steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
+            if steal_command:
+                ctx = await self.bot.get_context(response)
+                await ctx.invoke(steal_command, target=response.content)
+                
+                # حذف رسائل البوت
+                try:
+                    await message.delete()
+                except:
+                    pass
+                
+                # حذف رسالة المستخدم
+                try:
+                    await response.delete()
+                except:
+                    pass
+            else:
+                error_embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="عذراً، أمر السرقة غير متاح حالياً.",
+                    color=discord.Color.red()
+                )
+                await message.edit(embed=error_embed)
+        except asyncio.TimeoutError:
+            timeout_embed = discord.Embed(
+                title="⏰ انتهت المهلة",
+                description="انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى باستخدام `!سرقة @اسم_المستخدم`",
+                color=discord.Color.orange()
+            )
+            await message.edit(embed=timeout_embed)
+    
+    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.secondary, emoji="🔙", row=2)
+    async def back_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الرجوع للقائمة الرئيسية"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # العودة إلى القائمة الرئيسية
+        main_view = MainMenuView(self.bot, self.ctx)
+        
+        # تحديث الرسالة بالقائمة الرئيسية
+        embed = discord.Embed(
+            title="🤖 القائمة الرئيسية",
+            description="اختر أحد الخيارات أدناه:",
+            color=discord.Color.blue()
+        )
+        
+        # إضافة معلومات الفئات
+        embed.add_field(
+            name="🎵 الموسيقى",
+            value="تشغيل الموسيقى والتحكم بالقنوات الصوتية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎮 الألعاب",
+            value="العاب متنوعة لربح العملات",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="💰 البنك",
+            value="التحكم برصيدك والسرقة والحماية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="▶️ تشغيل سريع",
+            value="تشغيل موسيقى بدون خطوات إضافية",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔗 الانضمام لرابط",
+            value="الانضمام إلى روم من خلال رابط دعوة",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="⚡ اختصارات سريعة",
+            value="جميع الأوامر الشائعة في مكان واحد",
+            inline=True
+        )
+        
+        # إضافة صورة البوت
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
+        await interaction.response.edit_message(embed=embed, view=main_view)
+
+
+# إضافة قائمة الألعاب السريعة
+class QuickGamesView(ui.View):
+    """واجهة الألعاب السريعة"""
+    
+    def __init__(self, bot, ctx, timeout=60):
+        super().__init__(timeout=timeout)
+        self.bot = bot
+        self.ctx = ctx
+    
+    @ui.button(label="🎣 صيد", style=discord.ButtonStyle.primary, emoji="🎣", row=0)
+    async def fishing_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة الصيد السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة
+        await interaction.message.delete()
+        
+        # تنفيذ أمر الصيد
+        fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
+        if fishing_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(fishing_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة الصيد غير متاحة حالياً.")
+    
+    @ui.button(label="🎲 النرد", style=discord.ButtonStyle.primary, emoji="🎲", row=0)
+    async def dice_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة النرد السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة
+        await interaction.message.delete()
+        
+        # تنفيذ أمر النرد
+        dice_command = self.bot.get_command('نرد') or self.bot.get_command('dice')
+        if dice_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(dice_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة النرد غير متاحة حالياً.")
+    
+    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary, emoji="🃏", row=0)
+    async def blackjack_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة بلاك جاك السريع"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إغلاق القائمة
+        await interaction.message.delete()
+        
+        # تنفيذ أمر بلاك جاك
+        blackjack_command = self.bot.get_command('بلاك_جاك') or self.bot.get_command('blackjack')
+        if blackjack_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(blackjack_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة بلاك جاك غير متاحة حالياً.")
+    
+    @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.secondary, emoji="🔙", row=1)
+    async def back_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الرجوع لقائمة الاختصارات"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # العودة إلى قائمة الاختصارات
+        shortcuts_view = QuickShortcutsView(self.bot, self.ctx)
+        
+        # تحديث الرسالة
+        embed = discord.Embed(
+            title="⚡ الاختصارات السريعة",
+            description="جميع الأوامر الشائعة في مكان واحد! اختر الأمر الذي تريده:",
+            color=discord.Color.purple()
+        )
+        
+        # إضافة توضيح
+        embed.add_field(
+            name="🔰 معلومات",
+            value="هذه القائمة تجمع الأوامر الأكثر استخداماً في مكان واحد للوصول السريع",
+            inline=False
+        )
+        
+        # إضافة صورة البوت
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
+        await interaction.response.edit_message(embed=embed, view=shortcuts_view)
+
+
 class Menu(commands.Cog):
     """أوامر القوائم التفاعلية"""
     
@@ -1159,6 +1534,12 @@ class Menu(commands.Cog):
         embed.add_field(
             name="🔗 الانضمام لرابط",
             value="الانضمام إلى روم من خلال رابط دعوة",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="⚡ اختصارات سريعة",
+            value="جميع الأوامر الشائعة في مكان واحد",
             inline=True
         )
         
