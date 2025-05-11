@@ -1176,6 +1176,389 @@ class ComprehensiveMenuView(ui.View):
             await interaction.response.send_message("تم إيقاف الموسيقى!", ephemeral=True)
         else:
             await interaction.response.send_message("عذراً، أمر الإيقاف غير متاح حالياً.", ephemeral=True)
+    
+    @ui.button(label="⏭️ تخطي الأغنية", style=discord.ButtonStyle.secondary, emoji="⏭️", row=0)
+    async def music_skip_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر تخطي الأغنية"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # تنفيذ أمر التخطي
+        skip_command = self.bot.get_command('تخطي') or self.bot.get_command('skip')
+        if skip_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(skip_command)
+            await interaction.response.send_message("تم تخطي الأغنية الحالية!", ephemeral=True)
+        else:
+            await interaction.response.send_message("عذراً، أمر التخطي غير متاح حالياً.", ephemeral=True)
+    
+    @ui.button(label="🎮 لعبة الصيد", style=discord.ButtonStyle.primary, emoji="🎣", row=1)
+    async def fishing_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة الصيد"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر الصيد
+        fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
+        if fishing_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(fishing_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة الصيد غير متاحة حالياً.", ephemeral=True)
+            
+    @ui.button(label="🎲 لعبة النرد", style=discord.ButtonStyle.primary, emoji="🎲", row=1)
+    async def dice_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة النرد"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر النرد
+        dice_command = self.bot.get_command('نرد') or self.bot.get_command('dice')
+        if dice_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(dice_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة النرد غير متاحة حالياً.", ephemeral=True)
+    
+    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="🏇", row=1)
+    async def horserace_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة سباق الخيول"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر سباق الخيول
+        horserace_command = self.bot.get_command('سباق') or self.bot.get_command('horserace')
+        if horserace_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(horserace_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة سباق الخيول غير متاحة حالياً.", ephemeral=True)
+    
+    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary, emoji="🃏", row=1)
+    async def blackjack_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر لعبة بلاك جاك"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر بلاك جاك
+        blackjack_command = self.bot.get_command('بلاك_جاك') or self.bot.get_command('blackjack')
+        if blackjack_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(blackjack_command)
+        else:
+            await interaction.followup.send("عذراً، لعبة بلاك جاك غير متاحة حالياً.", ephemeral=True)
+    
+    @ui.button(label="💵 عرض الرصيد", style=discord.ButtonStyle.success, emoji="💵", row=2)
+    async def balance_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر عرض الرصيد"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر الرصيد
+        balance_command = self.bot.get_command('رصيد') or self.bot.get_command('balance')
+        if balance_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(balance_command)
+        else:
+            await interaction.followup.send("عذراً، أمر الرصيد غير متاح حالياً.", ephemeral=True)
+            
+    @ui.button(label="🎁 المكافأة اليومية", style=discord.ButtonStyle.success, emoji="🎁", row=2)
+    async def daily_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر المكافأة اليومية"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # تنفيذ أمر المكافأة اليومية
+        daily_command = self.bot.get_command('يومي') or self.bot.get_command('daily')
+        if daily_command:
+            ctx = await self.bot.get_context(self.ctx.message)
+            await ctx.invoke(daily_command)
+        else:
+            await interaction.followup.send("عذراً، أمر المكافأة اليومية غير متاح حالياً.", ephemeral=True)
+            
+    @ui.button(label="🕵️ سرقة", style=discord.ButtonStyle.danger, emoji="🕵️", row=2)
+    async def steal_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر السرقة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء مودال للسرقة
+        class StealModal(ui.Modal, title="سرقة مستخدم"):
+            target_input = ui.TextInput(
+                label="أدخل اسم أو معرف المستخدم",
+                placeholder="@username أو الاسم أو المعرف",
+                style=discord.TextStyle.short,
+                required=True,
+                max_length=100
+            )
+            
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                # رسالة الانتظار
+                wait_embed = discord.Embed(
+                    title="🕵️ جاري محاولة السرقة...",
+                    description=f"محاولة سرقة: `{self.target_input.value}`",
+                    color=discord.Color.gold()
+                )
+                
+                await modal_interaction.response.send_message(embed=wait_embed)
+                
+                # تنفيذ أمر السرقة
+                steal_command = self.bot.get_command('سرقة') or self.bot.get_command('steal')
+                if steal_command:
+                    steal_ctx = await self.bot.get_context(self.ctx.message)
+                    try:
+                        await steal_ctx.invoke(steal_command, target=self.target_input.value)
+                        
+                        message = await modal_interaction.original_response()
+                        try:
+                            await asyncio.sleep(3)
+                            await message.delete()
+                        except:
+                            pass
+                    except Exception as e:
+                        message = await modal_interaction.original_response()
+                        error_embed = discord.Embed(
+                            title="❌ خطأ في السرقة",
+                            description=f"حدث خطأ أثناء محاولة السرقة: `{str(e)}`",
+                            color=discord.Color.red()
+                        )
+                        await message.edit(embed=error_embed)
+                else:
+                    message = await modal_interaction.original_response()
+                    error_embed = discord.Embed(
+                        title="❌ خطأ",
+                        description="عذراً، أمر السرقة غير متاح حالياً.",
+                        color=discord.Color.red()
+                    )
+                    await message.edit(embed=error_embed)
+        
+        # عرض المودال
+        await interaction.response.send_modal(StealModal())
+    
+    @ui.button(label="💸 تحويل", style=discord.ButtonStyle.success, emoji="💸", row=3)
+    async def transfer_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر التحويل"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # إنشاء مودال للتحويل
+        class TransferModal(ui.Modal, title="تحويل أموال"):
+            recipient_input = ui.TextInput(
+                label="المستلم",
+                placeholder="@username أو الاسم أو المعرف",
+                style=discord.TextStyle.short,
+                required=True,
+                max_length=100
+            )
+            
+            amount_input = ui.TextInput(
+                label="المبلغ",
+                placeholder="أدخل مبلغ التحويل (أرقام فقط)",
+                style=discord.TextStyle.short,
+                required=True,
+                max_length=10
+            )
+            
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                # رسالة الانتظار
+                wait_embed = discord.Embed(
+                    title="💸 جاري التحويل...",
+                    description=f"محاولة تحويل `{self.amount_input.value}` إلى `{self.recipient_input.value}`",
+                    color=discord.Color.gold()
+                )
+                
+                await modal_interaction.response.send_message(embed=wait_embed)
+                
+                # تنفيذ أمر التحويل
+                transfer_command = self.bot.get_command('تحويل') or self.bot.get_command('transfer')
+                if transfer_command:
+                    transfer_ctx = await self.bot.get_context(self.ctx.message)
+                    try:
+                        await transfer_ctx.invoke(transfer_command, recipient=self.recipient_input.value, amount=self.amount_input.value)
+                        
+                        # حذف رسالة الانتظار بعد إتمام الأمر
+                        message = await modal_interaction.original_response()
+                        try:
+                            await asyncio.sleep(5)
+                            await message.delete()
+                        except:
+                            pass
+                    except Exception as e:
+                        error_embed = discord.Embed(
+                            title="❌ خطأ في التحويل",
+                            description=f"حدث خطأ أثناء محاولة التحويل: `{str(e)}`",
+                            color=discord.Color.red()
+                        )
+                        
+                        message = await modal_interaction.original_response()
+                        await message.edit(embed=error_embed)
+                else:
+                    error_embed = discord.Embed(
+                        title="❌ خطأ",
+                        description="عذراً، أمر التحويل غير متاح حالياً.",
+                        color=discord.Color.red()
+                    )
+                    
+                    message = await modal_interaction.original_response()
+                    await message.edit(embed=error_embed)
+        
+        # عرض المودال
+        await interaction.response.send_modal(TransferModal())
+    
+    @ui.button(label="🔊 دخول الروم الصوتي", style=discord.ButtonStyle.success, emoji="🔊", row=3)
+    async def join_voice_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الانضمام إلى الروم الصوتي للمستخدم"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # التحقق ما إذا كان المستخدم في قناة صوتية
+        if not interaction.user.voice:
+            return await interaction.response.send_message(
+                "أنت غير متواجد في أي روم صوتي! يرجى الانضمام إلى روم صوتي أولاً.",
+                ephemeral=True
+            )
+        
+        voice_channel = interaction.user.voice.channel
+        
+        # إنشاء رسالة توضيحية
+        embed = discord.Embed(
+            title="🔊 دخول الروم الصوتي",
+            description=f"جاري الانضمام إلى الروم الصوتي: **{voice_channel.name}**",
+            color=discord.Color.green()
+        )
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        # محاولة الانضمام للقناة الصوتية
+        voice_cog = self.bot.get_cog('VoiceControl')
+        if voice_cog:
+            voice_ctx = await self.bot.get_context(self.ctx.message)
+            voice_command = self.bot.get_command('صوت') or self.bot.get_command('voice')
+            if voice_command:
+                try:
+                    await voice_ctx.invoke(voice_command, channel_or_volume=str(voice_channel.id))
+                    
+                    # رسالة نجاح الانضمام
+                    success_embed = discord.Embed(
+                        title="✅ تم الانضمام بنجاح",
+                        description=f"تم الانضمام إلى الروم الصوتي: **{voice_channel.name}**\n"
+                                    f"يمكنك الآن استخدام أوامر الموسيقى مباشرة!",
+                        color=discord.Color.green()
+                    )
+                    
+                    await interaction.followup.send(embed=success_embed, ephemeral=True)
+                except Exception as e:
+                    error_embed = discord.Embed(
+                        title="❌ خطأ في الانضمام",
+                        description=f"حدث خطأ أثناء محاولة الانضمام إلى الروم الصوتي:\n`{str(e)}`",
+                        color=discord.Color.red()
+                    )
+                    await interaction.followup.send(embed=error_embed, ephemeral=True)
+            else:
+                await interaction.followup.send("عذراً، أمر الانضمام للروم الصوتي غير متاح حالياً.", ephemeral=True)
+        else:
+            await interaction.followup.send("عذراً، وحدة التحكم الصوتي غير متاحة حالياً.", ephemeral=True)
+    
+    @ui.button(label="🔗 انضمام لرابط", style=discord.ButtonStyle.primary, emoji="🔗", row=3)
+    async def join_link_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر الانضمام لرابط دعوة"""
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+            
+        # إنشاء مودال للرابط
+        class InviteModal(ui.Modal, title="انضمام لرابط دعوة"):
+            url_input = ui.TextInput(
+                label="أدخل رابط الدعوة",
+                placeholder="https://discord.gg/...",
+                style=discord.TextStyle.short,
+                required=True,
+                max_length=200
+            )
+            
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                # رسالة الانتظار
+                wait_embed = discord.Embed(
+                    title="🔗 جاري الانضمام...",
+                    description=f"جاري محاولة الانضمام إلى الرابط: `{self.url_input.value}`",
+                    color=discord.Color.blue()
+                )
+                
+                await modal_interaction.response.send_message(embed=wait_embed)
+                
+                # تنفيذ أمر الدعوة
+                invite_command = self.bot.get_command('دعوة') or self.bot.get_command('invite')
+                if invite_command:
+                    invite_ctx = await self.bot.get_context(self.ctx.message)
+                    try:
+                        await invite_ctx.invoke(invite_command, invite_link=self.url_input.value)
+                        
+                        # تأكيد الانضمام
+                        success_embed = discord.Embed(
+                            title="✅ تم الانضمام بنجاح",
+                            description=f"تم الانضمام إلى: `{self.url_input.value}`",
+                            color=discord.Color.green()
+                        )
+                        
+                        message = await modal_interaction.original_response()
+                        try:
+                            await message.edit(embed=success_embed)
+                            await asyncio.sleep(5)
+                            await message.delete()
+                        except:
+                            pass
+                    except Exception as e:
+                        message = await modal_interaction.original_response()
+                        error_embed = discord.Embed(
+                            title="❌ خطأ في الانضمام",
+                            description=f"حدث خطأ أثناء محاولة الانضمام: `{str(e)}`",
+                            color=discord.Color.red()
+                        )
+                        await message.edit(embed=error_embed)
+                else:
+                    message = await modal_interaction.original_response()
+                    error_embed = discord.Embed(
+                        title="❌ خطأ",
+                        description="عذراً، أمر الانضمام غير متاح حالياً.",
+                        color=discord.Color.red()
+                    )
+                    await message.edit(embed=error_embed)
+        
+        # عرض المودال
+        await interaction.response.send_modal(InviteModal())
+            
+    @ui.button(label="❌ إغلاق", style=discord.ButtonStyle.danger, emoji="❌", row=3)
+    async def close_button(self, interaction: discord.Interaction, button: ui.Button):
+        """زر إغلاق القائمة"""
+        # التحقق من المستخدم
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+        
+        # حذف الرسالة
+        await interaction.message.delete()
+
+    async def on_timeout(self):
+        """عند انتهاء مهلة القائمة"""
+        # تعطيل جميع الأزرار
+        for item in self.children:
+            item.disabled = True
+        
+        # تحديث الرسالة
+        try:
+            await self.message.edit(view=self)
+        except:
+            pass
 
 
 class Menu(commands.Cog):
@@ -1200,84 +1583,9 @@ class Menu(commands.Cog):
         
         # إنشاء رسالة مضمنة للقائمة الشاملة كل الأوامر
         embed = discord.Embed(
-            title="🤖 جميع أوامر البوت" if language == "ar" else "🤖 All Bot Commands",
-            description="مرحباً! اختر أحد الأوامر أدناه مباشرةً:" if language == "ar" else "Hello! Choose one of the commands below directly:",
+            title="🤖 أوامر البوت التفاعلية" if language == "ar" else "🤖 Interactive Bot Commands",
+            description="اختر مباشرة أحد الأزرار أدناه للوصول إلى الأوامر:" if language == "ar" else "Choose one of the buttons below for direct access to commands:",
             color=discord.Color.blue()
-        )
-        
-        # إضافة قسم الموسيقى
-        embed.add_field(
-            name="🎵 أوامر الموسيقى" if language == "ar" else "🎵 Music Commands",
-            value="**!تشغيل** أو **!p** + رابط/اسم: تشغيل موسيقى\n"
-                  "**!إيقاف** أو **!s**: إيقاف الموسيقى\n"
-                  "**!تخطي** أو **!sk**: تخطي الأغنية الحالية\n"
-                  "**!صوت** أو **!v** + رقم: ضبط مستوى الصوت\n"
-                  "**!بحث** أو **!search** + كلمة: البحث عن أغنية" if language == "ar" else 
-                  "**!play** or **!p** + link/name: Play music\n"
-                  "**!stop** or **!s**: Stop music\n"
-                  "**!skip** or **!sk**: Skip current song\n"
-                  "**!volume** or **!v** + number: Adjust volume\n"
-                  "**!search** + term: Search for a song",
-            inline=True
-        )
-        
-        # إضافة قسم البنك
-        embed.add_field(
-            name="💰 أوامر البنك" if language == "ar" else "💰 Bank Commands",
-            value="**!رصيد** أو **!balance**: عرض رصيدك\n"
-                  "**!يومي** أو **!daily**: المكافأة اليومية\n"
-                  "**!تحويل** أو **!transfer**: تحويل أموال\n"
-                  "**!حماية** أو **!protection**: حماية من السرقة\n"
-                  "**!سرقة** أو **!steal**: محاولة سرقة شخص آخر" if language == "ar" else 
-                  "**!balance**: View your balance\n"
-                  "**!daily**: Get daily reward\n"
-                  "**!transfer**: Transfer money\n"
-                  "**!protection**: Protect from stealing\n"
-                  "**!steal**: Try to steal from someone",
-            inline=True
-        )
-        
-        # إضافة قسم الألعاب
-        embed.add_field(
-            name="🎮 أوامر الألعاب" if language == "ar" else "🎮 Game Commands",
-            value="**!صيد** أو **!fish**: لعبة الصيد\n"
-                  "**!سباق** أو **!horserace**: سباق الخيول\n"
-                  "**!نرد** أو **!dice**: لعبة النرد\n"
-                  "**!بلاك_جاك** أو **!blackjack**: لعبة بلاك جاك" if language == "ar" else 
-                  "**!fish**: Fishing game\n"
-                  "**!horserace**: Horse racing\n"
-                  "**!dice**: Dice game\n"
-                  "**!blackjack**: Blackjack game",
-            inline=True
-        )
-        
-        # إضافة قسم الدعوات
-        embed.add_field(
-            name="🔗 أوامر الدعوات" if language == "ar" else "🔗 Invite Commands",
-            value="**!دعوة** أو **!invite** + رابط: الانضمام لرابط دعوة\n"
-                  "**!إنشاء_دعوة** أو **!create_invite**: إنشاء رابط دعوة" if language == "ar" else 
-                  "**!invite** + link: Join an invite link\n"
-                  "**!create_invite**: Create an invite link",
-            inline=True
-        )
-        
-        # إضافة قسم الاختصارات وإعدادات البوت
-        embed.add_field(
-            name="⚙️ إعدادات وأوامر عامة" if language == "ar" else "⚙️ Settings & General",
-            value="**!لغة** أو **!language**: تغيير اللغة\n"
-                  "**!بريفكس** أو **!prefix**: تغيير بادئة الأوامر\n"
-                  "**!بنق** أو **!ping**: قياس سرعة البوت\n"
-                  "**!m**: قائمة شاملة مختصرة" if language == "ar" else 
-                  "**!language**: Change language\n"
-                  "**!prefix**: Change command prefix\n"
-                  "**!ping**: Measure bot speed\n"
-                  "**!m**: Compact menu",
-            inline=True
-        )
-        
-        # إضافة تذييل
-        embed.set_footer(
-            text="يمكنك استخدام الأزرار أدناه للوصول السريع للأوامر الأكثر استخداماً" if language == "ar" else "You can use the buttons below for quick access to the most used commands"
         )
         
         # إضافة صورة البوت
@@ -1286,59 +1594,6 @@ class Menu(commands.Cog):
         
         # إنشاء كائن القائمة الشاملة المحسنة
         view = ComprehensiveMenuView(self.bot, ctx)
-        
-        # إرسال الرسالة مع القائمة
-        message = await ctx.send(embed=embed, view=view)
-        
-        # حفظ الرسالة في كائن القائمة لاستخدامها لاحقًا
-        view.message = message
-    
-    @commands.command(
-        name="m",
-        aliases=["compact", "مختصر"],
-        description="عرض قائمة مختصرة للأوامر"
-    )
-    async def compact_menu(self, ctx):
-        """
-        عرض قائمة مختصرة للأوامر
-        
-        استخدم هذا الأمر لعرض واجهة تفاعلية مختصرة للوصول إلى فئات الأوامر الرئيسية.
-        """
-        # تحديد اللغة المستخدمة
-        language = get_user_language(self.bot, ctx.author.id)
-        
-        # إنشاء رسالة مضمنة للقائمة المختصرة
-        embed = discord.Embed(
-            title="🤖 القائمة الرئيسية" if language == "ar" else "🤖 Main Menu",
-            description="اختر أحد الخيارات أدناه:" if language == "ar" else "Choose one of the options below:",
-            color=discord.Color.blue()
-        )
-        
-        # إضافة معلومات الفئات
-        embed.add_field(
-            name="🎵 الموسيقى" if language == "ar" else "🎵 Music",
-            value="تشغيل الموسيقى والتحكم بالقنوات الصوتية" if language == "ar" else "Play music and control voice channels",
-            inline=True
-        )
-        
-        embed.add_field(
-            name="🎮 الألعاب" if language == "ar" else "🎮 Games",
-            value="العاب متنوعة لربح العملات" if language == "ar" else "Various games to earn coins",
-            inline=True
-        )
-        
-        embed.add_field(
-            name="💰 البنك" if language == "ar" else "💰 Bank",
-            value="التحكم برصيدك والسرقة والحماية" if language == "ar" else "Manage your balance, steal, and protect",
-            inline=True
-        )
-        
-        # إضافة صورة البوت
-        if self.bot.user.avatar:
-            embed.set_thumbnail(url=self.bot.user.avatar.url)
-            
-        # إنشاء كائن القائمة الرئيسية
-        view = MainMenuView(self.bot, ctx)
         
         # إرسال الرسالة مع القائمة
         message = await ctx.send(embed=embed, view=view)
