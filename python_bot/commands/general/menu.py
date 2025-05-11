@@ -656,161 +656,69 @@ class GamesMenuView(ui.View):
         self.bot = bot
         self.ctx = ctx
     
-    @ui.button(label="🎣 صيد", style=discord.ButtonStyle.primary, emoji="🎣")
+    @ui.button(label="🎣 صيد", style=discord.ButtonStyle.primary, emoji="🎣", row=2)
     async def fishing_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة الصيد"""
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
         
-        # إغلاق القائمة
-        await interaction.message.delete()
-        
-        # إنشاء رسالة توضيحية
-        embed = discord.Embed(
-            title="🎣 لعبة الصيد",
-            description="جاري بدء لعبة الصيد...",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="💡 تلميح",
-            value="يمكنك استخدام الأمر `!صيد` أو `!fish` مباشرة في المرات القادمة!",
-            inline=False
-        )
-        
-        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         
         # تنفيذ أمر الصيد
         fishing_command = self.bot.get_command('صيد') or self.bot.get_command('fish')
         if fishing_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(fishing_command)
-            
-            # حذف رسالة البدء بعد فترة
-            try:
-                await asyncio.sleep(3)
-                await start_message.delete()
-            except:
-                pass
         else:
-            await interaction.followup.send("عذراً، لعبة الصيد غير متاحة حالياً.")
+            await interaction.followup.send("عذراً، لعبة الصيد غير متاحة حالياً.", ephemeral=True)
     
-    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="🏇")
+    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="🏇", row=2)
     async def horserace_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة سباق الخيول"""
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
         
-        # إغلاق القائمة
-        await interaction.message.delete()
-        
-        # إنشاء رسالة توضيحية
-        embed = discord.Embed(
-            title="🏇 سباق الخيول",
-            description="جاري بدء سباق الخيول...",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="💡 تلميح",
-            value="يمكنك استخدام الأمر `!سباق` أو `!horserace` مباشرة في المرات القادمة!",
-            inline=False
-        )
-        
-        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         
         # تنفيذ أمر سباق الخيول
         horserace_command = self.bot.get_command('سباق') or self.bot.get_command('horserace')
         if horserace_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(horserace_command)
-            
-            # حذف رسالة البدء بعد فترة
-            try:
-                await asyncio.sleep(3)
-                await start_message.delete()
-            except:
-                pass
         else:
-            await interaction.followup.send("عذراً، لعبة سباق الخيول غير متاحة حالياً.")
+            await interaction.followup.send("عذراً، لعبة سباق الخيول غير متاحة حالياً.", ephemeral=True)
     
-    @ui.button(label="🎲 النرد", style=discord.ButtonStyle.primary, emoji="🎲")
+    @ui.button(label="🎲 النرد", style=discord.ButtonStyle.primary, emoji="🎲", row=2)
     async def dice_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة النرد"""
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
         
-        # إغلاق القائمة
-        await interaction.message.delete()
-        
-        # إنشاء رسالة توضيحية
-        embed = discord.Embed(
-            title="🎲 لعبة النرد",
-            description="جاري بدء لعبة النرد...",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="💡 تلميح",
-            value="يمكنك استخدام الأمر `!نرد` أو `!dice` مباشرة في المرات القادمة!",
-            inline=False
-        )
-        
-        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         
         # تنفيذ أمر النرد
         dice_command = self.bot.get_command('نرد') or self.bot.get_command('dice')
         if dice_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(dice_command)
-            
-            # حذف رسالة البدء بعد فترة
-            try:
-                await asyncio.sleep(3)
-                await start_message.delete()
-            except:
-                pass
         else:
-            await interaction.followup.send("عذراً، لعبة النرد غير متاحة حالياً.")
+            await interaction.followup.send("عذراً، لعبة النرد غير متاحة حالياً.", ephemeral=True)
     
-    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary, emoji="🃏")
+    @ui.button(label="🃏 بلاك جاك", style=discord.ButtonStyle.primary, emoji="🃏", row=2)
     async def blackjack_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة بلاك جاك"""
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
         
-        # إغلاق القائمة
-        await interaction.message.delete()
-        
-        # إنشاء رسالة توضيحية
-        embed = discord.Embed(
-            title="🃏 لعبة بلاك جاك",
-            description="جاري بدء لعبة بلاك جاك...",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="💡 تلميح",
-            value="يمكنك استخدام الأمر `!بلاك_جاك` أو `!blackjack` مباشرة في المرات القادمة!",
-            inline=False
-        )
-        
-        start_message = await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         
         # تنفيذ أمر بلاك جاك
         blackjack_command = self.bot.get_command('بلاك_جاك') or self.bot.get_command('blackjack')
         if blackjack_command:
             ctx = await self.bot.get_context(self.ctx.message)
             await ctx.invoke(blackjack_command)
-            
-            # حذف رسالة البدء بعد فترة
-            try:
-                await asyncio.sleep(3)
-                await start_message.delete()
-            except:
-                pass
         else:
-            await interaction.followup.send("عذراً، لعبة بلاك جاك غير متاحة حالياً.")
+            await interaction.followup.send("عذراً، لعبة بلاك جاك غير متاحة حالياً.", ephemeral=True)
     
     @ui.button(label="🔙 رجوع", style=discord.ButtonStyle.danger, emoji="🔙")
     async def back_button(self, interaction: discord.Interaction, button: ui.Button):
@@ -1052,7 +960,7 @@ class BankMenuView(ui.View):
         # عرض المودال
         await interaction.response.send_modal(StealModal())
     
-    @ui.button(label="💸 تحويل", style=discord.ButtonStyle.primary, emoji="💸")
+    @ui.button(label="💸 تحويل", style=discord.ButtonStyle.success, emoji="💸", row=3)
     async def transfer_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر التحويل"""
         if interaction.user.id != self.ctx.author.id:
@@ -1434,6 +1342,122 @@ class QuickShortcutsView(ui.View):
         await interaction.response.edit_message(embed=embed, view=main_view)
 
 
+class Menu(commands.Cog):
+    """أوامر القوائم التفاعلية"""
+    
+    def __init__(self, bot):
+        self.bot = bot
+    
+    @commands.command(
+        name="h",
+        aliases=["menu", "قائمة", "مساعدة"],
+        description="عرض قائمة تفاعلية للأوامر"
+    )
+    async def menu(self, ctx):
+        """
+        عرض قائمة تفاعلية للأوامر
+        
+        استخدم هذا الأمر لعرض واجهة تفاعلية سهلة الاستخدام للوصول إلى جميع أوامر البوت.
+        """
+        # تحديد اللغة المستخدمة
+        language = get_user_language(self.bot, ctx.author.id)
+        
+        # إنشاء رسالة مضمنة للقائمة الشاملة كل الأوامر
+        embed = discord.Embed(
+            title="🤖 جميع أوامر البوت" if language == "ar" else "🤖 All Bot Commands",
+            description="مرحباً! اختر أحد الأوامر أدناه مباشرةً:" if language == "ar" else "Hello! Choose one of the commands below directly:",
+            color=discord.Color.blue()
+        )
+        
+        # إضافة قسم الموسيقى
+        embed.add_field(
+            name="🎵 أوامر الموسيقى" if language == "ar" else "🎵 Music Commands",
+            value="**!تشغيل** أو **!p** + رابط/اسم: تشغيل موسيقى\n"
+                  "**!إيقاف** أو **!s**: إيقاف الموسيقى\n"
+                  "**!تخطي** أو **!sk**: تخطي الأغنية الحالية\n"
+                  "**!صوت** أو **!v** + رقم: ضبط مستوى الصوت\n"
+                  "**!بحث** أو **!search** + كلمة: البحث عن أغنية" if language == "ar" else 
+                  "**!play** or **!p** + link/name: Play music\n"
+                  "**!stop** or **!s**: Stop music\n"
+                  "**!skip** or **!sk**: Skip current song\n"
+                  "**!volume** or **!v** + number: Adjust volume\n"
+                  "**!search** + term: Search for a song",
+            inline=True
+        )
+        
+        # إضافة قسم البنك
+        embed.add_field(
+            name="💰 أوامر البنك" if language == "ar" else "💰 Bank Commands",
+            value="**!رصيد** أو **!balance**: عرض رصيدك\n"
+                  "**!يومي** أو **!daily**: المكافأة اليومية\n"
+                  "**!تحويل** أو **!transfer**: تحويل أموال\n"
+                  "**!حماية** أو **!protection**: حماية من السرقة\n"
+                  "**!سرقة** أو **!steal**: محاولة سرقة شخص آخر" if language == "ar" else 
+                  "**!balance**: View your balance\n"
+                  "**!daily**: Get daily reward\n"
+                  "**!transfer**: Transfer money\n"
+                  "**!protection**: Protect from stealing\n"
+                  "**!steal**: Try to steal from someone",
+            inline=True
+        )
+        
+        # إضافة قسم الألعاب
+        embed.add_field(
+            name="🎮 أوامر الألعاب" if language == "ar" else "🎮 Game Commands",
+            value="**!صيد** أو **!fish**: لعبة الصيد\n"
+                  "**!سباق** أو **!horserace**: سباق الخيول\n"
+                  "**!نرد** أو **!dice**: لعبة النرد\n"
+                  "**!بلاك_جاك** أو **!blackjack**: لعبة بلاك جاك" if language == "ar" else 
+                  "**!fish**: Fishing game\n"
+                  "**!horserace**: Horse racing\n"
+                  "**!dice**: Dice game\n"
+                  "**!blackjack**: Blackjack game",
+            inline=True
+        )
+        
+        # إضافة قسم الدعوات
+        embed.add_field(
+            name="🔗 أوامر الدعوات" if language == "ar" else "🔗 Invite Commands",
+            value="**!دعوة** أو **!invite** + رابط: الانضمام لرابط دعوة\n"
+                  "**!إنشاء_دعوة** أو **!create_invite**: إنشاء رابط دعوة" if language == "ar" else 
+                  "**!invite** + link: Join an invite link\n"
+                  "**!create_invite**: Create an invite link",
+            inline=True
+        )
+        
+        # إضافة قسم الاختصارات وإعدادات البوت
+        embed.add_field(
+            name="⚙️ إعدادات وأوامر عامة" if language == "ar" else "⚙️ Settings & General",
+            value="**!لغة** أو **!language**: تغيير اللغة\n"
+                  "**!بريفكس** أو **!prefix**: تغيير بادئة الأوامر\n"
+                  "**!بنق** أو **!ping**: قياس سرعة البوت\n"
+                  "**!m**: قائمة شاملة مختصرة" if language == "ar" else 
+                  "**!language**: Change language\n"
+                  "**!prefix**: Change command prefix\n"
+                  "**!ping**: Measure bot speed\n"
+                  "**!m**: Compact menu",
+            inline=True
+        )
+        
+        # إضافة تذييل
+        embed.set_footer(
+            text="يمكنك استخدام الأزرار أدناه للوصول السريع للأوامر الأكثر استخداماً" if language == "ar" else "You can use the buttons below for quick access to the most used commands"
+        )
+        
+        # إضافة صورة البوت
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
+        # إنشاء كائن القائمة الشاملة المحسنة
+        view = ComprehensiveMenuView(self.bot, ctx)
+        
+        # إرسال الرسالة مع القائمة
+        message = await ctx.send(embed=embed, view=view)
+        
+        # حفظ الرسالة في كائن القائمة لاستخدامها لاحقًا
+        view.message = message
+
+
 async def setup(bot):
     """إعداد الأمر وإضافته إلى البوت"""
     # استيراد asyncio هنا لتجنب مشاكل الاستيراد الدائري
@@ -1443,4 +1467,4 @@ async def setup(bot):
     globals()['asyncio'] = asyncio
     
     # إضافة الأمر للبوت
-    await bot.add_cog(Menu(bot)) 
+    await bot.add_cog(Menu(bot))
