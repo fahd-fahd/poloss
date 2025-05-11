@@ -3,7 +3,7 @@ from discord.ext import commands
 import wavelink
 import asyncio
 import re
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Set
 import logging
 
 # Setup logger
@@ -25,6 +25,91 @@ class MusicControlView(discord.ui.View):
         # Create modal for URL input
         modal = MusicURLModal(self.bot, self.voice_channel_id, self.text_channel_id)
         await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="إغلاق الغرفة", style=discord.ButtonStyle.red, custom_id="temp_voice_close")
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """زر إغلاق الغرفة الصوتية يدويًا"""
+        # Get voice channel
+        voice_channel = self.bot.get_channel(self.voice_channel_id)
+        if not voice_channel:
+            await interaction.response.send_message("❌ لم يتم العثور على الغرفة الصوتية.", ephemeral=True)
+            return
+        
+        # Get text channel
+        text_channel = self.bot.get_channel(self.text_channel_id)
+        
+        # Check if user is the creator or has manage channels permission
+        guild = voice_channel.guild
+        member = guild.get_member(interaction.user.id)
+        
+        if not member:
+            await interaction.response.send_message("❌ حدث خطأ أثناء التحقق من صلاحياتك.", ephemeral=True)
+            return
+        
+        # Check if user has permission to close the channel
+        temp_voice_cog = self.bot.get_cog("TempVoice")
+        is_creator = False
+        
+        if temp_voice_cog and guild.id in temp_voice_cog.channel_creators:
+            if voice_channel.id in temp_voice_cog.channel_creators[guild.id]:
+                creator_id = temp_voice_cog.channel_creators[guild.id][voice_channel.id]
+                is_creator = (creator_id == interaction.user.id)
+        
+        if not (is_creator or member.guild_permissions.manage_channels):
+            await interaction.response.send_message("❌ ليس لديك صلاحية إغلاق هذه الغرفة.", ephemeral=True)
+            return
+        
+        # Disconnect bot if connected
+        try:
+            player = wavelink.Pool.get_node().get_player(guild.id)
+            if player and player.channel and player.channel.id == voice_channel.id:
+                await player.disconnect()
+                
+                # Clean up queue and now playing
+                if temp_voice_cog:
+                    if guild.id in temp_voice_cog.song_queue:
+                        temp_voice_cog.song_queue[guild.id] = []
+                    
+                    if guild.id in temp_voice_cog.now_playing:
+                        del temp_voice_cog.now_playing[guild.id]
+        except Exception as e:
+            logger.error(f"Error disconnecting player: {str(e)}")
+        
+        # Move all members out of the voice channel
+        try:
+            for member in voice_channel.members:
+                await member.move_to(None)
+        except Exception as e:
+            logger.error(f"Error moving members: {str(e)}")
+        
+        # Delete channels
+        try:
+            await interaction.response.send_message("✅ جاري إغلاق الغرفة...", ephemeral=True)
+            
+            if text_channel:
+                await text_channel.delete(reason="تم إغلاق الغرفة الصوتية المؤقتة يدويًا")
+            
+            await voice_channel.delete(reason="تم إغلاق الغرفة الصوتية المؤقتة يدويًا")
+            
+            # Remove from tracking
+            if temp_voice_cog:
+                if guild.id in temp_voice_cog.temp_channels and voice_channel.id in temp_voice_cog.temp_channels[guild.id]:
+                    del temp_voice_cog.temp_channels[guild.id][voice_channel.id]
+                    if not temp_voice_cog.temp_channels[guild.id]:
+                        del temp_voice_cog.temp_channels[guild.id]
+                
+                # Remove from game channels
+                if guild.id in temp_voice_cog.game_channels and voice_channel.id in temp_voice_cog.game_channels:
+                    temp_voice_cog.game_channels.remove(voice_channel.id)
+                
+                # Remove from channel creators
+                if guild.id in temp_voice_cog.channel_creators and voice_channel.id in temp_voice_cog.channel_creators[guild.id]:
+                    del temp_voice_cog.channel_creators[guild.id][voice_channel.id]
+            
+            logger.info(f"Manually deleted temporary voice channel in {guild.name}")
+        except Exception as e:
+            logger.error(f"Error deleting temporary channels: {str(e)}")
+            await interaction.followup.send(f"❌ حدث خطأ أثناء إغلاق الغرفة: {str(e)}", ephemeral=True)
 
 
 class MusicURLModal(discord.ui.Modal, title="تشغيل محتوى صوتي"):
@@ -164,6 +249,8 @@ class TempVoice(commands.Cog):
         self.create_channel_name = "إنشاء غرفة صوتية"
         self.song_queue = {}  # {guild_id: [tracks]}
         self.now_playing = {}  # {guild_id: track}
+        self.game_channels: Set[int] = set()  # Set of voice channel IDs used for games
+        self.channel_creators: Dict[int, Dict[int, int]] = {}  # {guild_id: {channel_id: creator_id}}
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -183,6 +270,11 @@ class TempVoice(commands.Cog):
         
         # Handle channel deletion
         if before.channel and not after.channel:
+            # Check if this is a game channel
+            if before.channel.id in self.game_channels:
+                # Don't delete game channels when empty
+                return
+            
             await self._check_empty_channel(before.channel)
     
     async def _create_temp_channel(self, member: discord.Member, create_channel: discord.VoiceChannel):
@@ -218,6 +310,12 @@ class TempVoice(commands.Cog):
             
             self.temp_channels[guild.id][voice_channel.id] = text_channel.id
             
+            # Store channel creator
+            if guild.id not in self.channel_creators:
+                self.channel_creators[guild.id] = {}
+            
+            self.channel_creators[guild.id][voice_channel.id] = member.id
+            
             # Move member to the new voice channel
             await member.move_to(voice_channel)
             
@@ -236,7 +334,8 @@ class TempVoice(commands.Cog):
                 name="📝 تعليمات",
                 value="1. أدخل رابط التشغيل في الحقل المخصص\n"
                       "2. اضغط على زر التشغيل\n"
-                      "3. سيبدأ تشغيل المحتوى الصوتي في الغرفة",
+                      "3. سيبدأ تشغيل المحتوى الصوتي في الغرفة\n"
+                      "4. استخدم الأمر `!h` للألعاب لمنع إغلاق الغرفة تلقائيًا",
                 inline=False
             )
             
@@ -294,6 +393,10 @@ class TempVoice(commands.Cog):
                     del self.temp_channels[guild.id][channel.id]
                     if not self.temp_channels[guild.id]:
                         del self.temp_channels[guild.id]
+                    
+                    # Remove from channel creators
+                    if guild.id in self.channel_creators and channel.id in self.channel_creators[guild.id]:
+                        del self.channel_creators[guild.id][channel.id]
                     
                     logger.info(f"Deleted empty temporary voice channel in {guild.name}")
                 except Exception as e:
@@ -386,6 +489,58 @@ class TempVoice(commands.Cog):
             
         except Exception as e:
             await ctx.send(f"❌ حدث خطأ أثناء إنشاء القناة: {str(e)}")
+    
+    @commands.command(
+        name="h",
+        aliases=["game", "لعبة", "العاب"],
+        description="تحويل الغرفة الصوتية إلى غرفة ألعاب (لا تغلق تلقائيًا)"
+    )
+    async def game_mode(self, ctx):
+        """تحويل الغرفة الصوتية إلى غرفة ألعاب (لا تغلق تلقائيًا)"""
+        # Check if user is in a voice channel
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            await ctx.send("❌ يجب أن تكون متصلاً بغرفة صوتية لاستخدام هذا الأمر.")
+            return
+        
+        voice_channel = ctx.author.voice.channel
+        guild_id = ctx.guild.id
+        
+        # Check if this is a temporary channel
+        is_temp_channel = False
+        if guild_id in self.temp_channels and voice_channel.id in self.temp_channels[guild_id]:
+            is_temp_channel = True
+        
+        if not is_temp_channel:
+            await ctx.send("❌ هذا الأمر متاح فقط في الغرف الصوتية المؤقتة.")
+            return
+        
+        # Check if user is the creator or has manage channels permission
+        is_creator = False
+        if guild_id in self.channel_creators and voice_channel.id in self.channel_creators[guild_id]:
+            creator_id = self.channel_creators[guild_id][voice_channel.id]
+            is_creator = (creator_id == ctx.author.id)
+        
+        if not (is_creator or ctx.author.guild_permissions.manage_channels):
+            await ctx.send("❌ يجب أن تكون منشئ الغرفة أو تملك صلاحيات إدارة القنوات لاستخدام هذا الأمر.")
+            return
+        
+        # Add to game channels
+        self.game_channels.add(voice_channel.id)
+        
+        # Send confirmation
+        embed = discord.Embed(
+            title="🎮 وضع الألعاب",
+            description="تم تفعيل وضع الألعاب لهذه الغرفة. لن يتم إغلاقها تلقائيًا عند خروج الأعضاء منها.",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="📝 ملاحظة",
+            value="لإغلاق الغرفة يدويًا، استخدم زر 'إغلاق الغرفة' في غرفة التحكم.",
+            inline=False
+        )
+        
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
