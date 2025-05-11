@@ -137,7 +137,17 @@ class SearchResultsView(View):
             
             try:
                 # محاولة الحصول على مشغل موجود
-                player = wavelink.NodePool.get_node().get_player(interaction.guild.id)
+                try:
+                    # استخدام wavelink.nodes بدلاً من NodePool
+                    node = wavelink.nodes.get_node()
+                    player = node.get_player(interaction.guild.id)
+                except AttributeError:
+                    # للإصدارات القديمة
+                    try:
+                        player = wavelink.players.get_player(guild_id=interaction.guild.id)
+                    except Exception:
+                        player = None
+                
                 if not player:
                     if show_message:
                         await interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
@@ -233,12 +243,99 @@ class MusicSearch(commands.Cog):
         """
         if not query:
             embed = discord.Embed(
-                title="❌ خطأ في الأمر",
-                description=f"يرجى تحديد كلمات البحث.\n"
-                           f"مثال: `!بحث despacito`",
-                color=discord.Color.red()
+                title="🔍 البحث عن موسيقى",
+                description="أدخل كلمات البحث ليقوم البوت بالبحث في YouTube",
+                color=discord.Color.blue()
             )
-            return await ctx.send(embed=embed)
+            
+            # إنشاء مودال للبحث
+            class SearchModal(ui.Modal, title="البحث عن أغنية"):
+                search_query = ui.TextInput(
+                    label="أدخل كلمات البحث",
+                    placeholder="مثال: despacito أو اسم الفنان",
+                    style=discord.TextStyle.short,
+                    required=True,
+                    max_length=200
+                )
+                
+                async def on_submit(self, modal_interaction: discord.Interaction):
+                    # رسالة انتظار
+                    loading_msg = await modal_interaction.response.send_message("🔍 جاري البحث في YouTube...", ephemeral=False)
+                    
+                    # التحقق من وجود المستخدم في قناة صوتية
+                    if not modal_interaction.user.voice:
+                        return await loading_msg.edit(content="❌ يجب أن تكون في قناة صوتية لاستخدام هذا الأمر.")
+                    
+                    try:
+                        # البحث عن الأغاني في YouTube
+                        search_query = f"ytsearch5:{self.search_query.value}"  # البحث عن 5 نتائج فقط
+                        
+                        try:
+                            # محاولة استخدام nodes.get_node
+                            node = wavelink.nodes.get_node()
+                            tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
+                        except (AttributeError, TypeError):
+                            # إذا فشلت المحاولة الأولى، استخدم الطريقة القديمة
+                            try:
+                                tracks = await wavelink.YouTubeTrack.search(self.search_query.value, return_first=False)
+                            except Exception as e:
+                                return await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
+                        
+                        if not tracks:
+                            return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
+                        
+                        # إنشاء رسالة مضمنة مع نتائج البحث
+                        embed = discord.Embed(
+                            title=f"🔍 نتائج البحث عن: {self.search_query.value}",
+                            description="اختر أغنية من القائمة أدناه للتشغيل:",
+                            color=discord.Color.blue()
+                        )
+                        
+                        # إضافة النتائج
+                        for i, track in enumerate(tracks, 1):
+                            embed.add_field(
+                                name=f"{i}. {track.title}",
+                                value=f"المدة: {self._format_duration(track.duration)}",
+                                inline=False
+                            )
+                        
+                        # إنشاء واجهة التفاعل
+                        view = SearchResultsView(self.bot, ctx, tracks)
+                        
+                        await loading_msg.edit(content=None, embed=embed, view=view)
+                        
+                    except Exception as e:
+                        await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
+                        print(f"خطأ في أمر البحث: {str(e)}")
+                
+                def _format_duration(self, milliseconds):
+                    """تنسيق المدة من مللي ثانية إلى صيغة دقائق:ثواني"""
+                    seconds = milliseconds // 1000
+                    minutes, seconds = divmod(seconds, 60)
+                    hours, minutes = divmod(minutes, 60)
+                    
+                    if hours > 0:
+                        return f"{hours}:{minutes:02d}:{seconds:02d}"
+                    else:
+                        return f"{minutes}:{seconds:02d}"
+            
+            # إنشاء زر للبحث
+            class SearchView(discord.ui.View):
+                def __init__(self, timeout=180):
+                    super().__init__(timeout=timeout)
+                
+                @discord.ui.button(label="🔍 بحث عن أغنية", style=discord.ButtonStyle.primary)
+                async def search_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                    # التحقق من المستخدم
+                    if button_interaction.user.id != ctx.author.id:
+                        return await button_interaction.response.send_message("هذه القائمة ليست لك!", ephemeral=True)
+                    
+                    # فتح المودال للبحث
+                    await button_interaction.response.send_modal(SearchModal())
+            
+            # إرسال رسالة مع زر البحث
+            msg = await ctx.send(embed=embed, view=SearchView())
+            return
         
         # التحقق من وجود المستخدم في قناة صوتية
         if not ctx.author.voice:
@@ -255,7 +352,17 @@ class MusicSearch(commands.Cog):
         try:
             # البحث عن الأغاني في YouTube
             search_query = f"ytsearch5:{query}"  # البحث عن 5 نتائج فقط
-            tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, search_query)
+            
+            try:
+                # محاولة استخدام nodes.get_node
+                node = wavelink.nodes.get_node()
+                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
+            except (AttributeError, TypeError):
+                # إذا فشلت المحاولة الأولى، استخدم الطريقة القديمة
+                try:
+                    tracks = await wavelink.YouTubeTrack.search(query, return_first=False)
+                except Exception as e:
+                    return await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
             
             if not tracks:
                 return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
