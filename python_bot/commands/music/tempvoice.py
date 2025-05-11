@@ -1,264 +1,393 @@
-
 import discord
 from discord.ext import commands
 import wavelink
-from discord import app_commands
 import asyncio
+import re
+from typing import Dict, Optional, Union
+import logging
 
-# نموذج إدخال الرابط
-class LinkModal(discord.ui.Modal, title="أدخل رابط التشغيل"):
-    link = discord.ui.TextInput(
-        label="رابط التشغيل",
-        placeholder="أدخل رابط YouTube أو أي رابط صوتي آخر",
-        required=True,
-    )
+# Setup logger
+logger = logging.getLogger(__name__)
 
-    def __init__(self, view):
-        super().__init__()
-        self.view = view
-
-    async def on_submit(self, interaction: discord.Interaction):
-        self.view.link = self.link.value
-        await interaction.response.defer()
-        await self.view.play_button.callback(interaction)
-
-# واجهة التحكم بالتشغيل
 class MusicControlView(discord.ui.View):
-    def __init__(self, cog, voice_channel_id, text_channel_id):
-        super().__init__(timeout=None)
-        self.cog = cog
+    """واجهة التحكم بالصوت في الغرفة المؤقتة"""
+    
+    def __init__(self, bot, voice_channel_id, text_channel_id):
+        super().__init__(timeout=None)  # No timeout - persistent view
+        self.bot = bot
         self.voice_channel_id = voice_channel_id
         self.text_channel_id = text_channel_id
-        self.link = None
-
-    @discord.ui.button(label="تشغيل", style=discord.ButtonStyle.green, custom_id="play_button")
+        self.url_input = None
+    
+    @discord.ui.button(label="تشغيل", style=discord.ButtonStyle.green, custom_id="temp_voice_play")
     async def play_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # إذا لم يتم إدخال الرابط بعد، افتح النموذج
-        if self.link is None:
-            await interaction.response.send_modal(LinkModal(self))
-            return
+        """زر تشغيل المحتوى الصوتي"""
+        # Create modal for URL input
+        modal = MusicURLModal(self.bot, self.voice_channel_id, self.text_channel_id)
+        await interaction.response.send_modal(modal)
 
-        # تحقق من وجود البوت في الروم الصوتي
-        guild = interaction.guild
-        voice_channel = guild.get_channel(self.voice_channel_id)
+
+class MusicURLModal(discord.ui.Modal, title="تشغيل محتوى صوتي"):
+    """نافذة إدخال رابط المحتوى الصوتي"""
+    
+    url_input = discord.ui.TextInput(
+        label="أدخل رابط التشغيل",
+        placeholder="رابط YouTube أو أي رابط صوتي آخر",
+        required=True,
+        style=discord.TextStyle.short
+    )
+    
+    def __init__(self, bot, voice_channel_id, text_channel_id):
+        super().__init__()
+        self.bot = bot
+        self.voice_channel_id = voice_channel_id
+        self.text_channel_id = text_channel_id
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """عند تقديم النموذج"""
+        await interaction.response.defer(ephemeral=True)
         
+        url = self.url_input.value.strip()
+        
+        # Get voice channel
+        voice_channel = self.bot.get_channel(self.voice_channel_id)
         if not voice_channel:
-            await interaction.response.send_message("لم يتم العثور على الروم الصوتي.", ephemeral=True)
+            await interaction.followup.send("❌ لم يتم العثور على الغرفة الصوتية.", ephemeral=True)
             return
-
-        # تحقق من اتصال البوت
-        voice_client = discord.utils.get(self.cog.bot.voice_clients, guild=guild)
-        if voice_client is None or voice_client.channel.id != self.voice_channel_id:
-            try:
-                voice_client = await voice_channel.connect(cls=wavelink.Player)
-            except Exception as e:
-                await interaction.response.send_message(f"حدث خطأ أثناء الاتصال: {e}", ephemeral=True)
-                return
-
-        # تشغيل الرابط
+        
+        # Get text channel
+        text_channel = self.bot.get_channel(self.text_channel_id)
+        if not text_channel:
+            await interaction.followup.send("❌ لم يتم العثور على غرفة الدردشة.", ephemeral=True)
+            return
+        
+        # Check if URL is valid
+        url_pattern = re.compile(r'https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
+        if not url_pattern.match(url):
+            await interaction.followup.send("❌ الرابط غير صالح. يرجى إدخال رابط صحيح.", ephemeral=True)
+            return
+        
+        # Connect to voice channel if not already connected
         try:
-            await interaction.response.defer()
+            # Check if already connected
+            player = wavelink.Pool.get_node().get_player(voice_channel.guild.id)
+            if not player:
+                # Connect to voice channel
+                player = await voice_channel.connect(cls=wavelink.Player)
             
-            # تحقق من صحة الرابط وابحث عنه
-            try:
-                tracks = await wavelink.YouTubeTrack.search(self.link)
-                if not tracks:
-                    await interaction.followup.send("لم يتم العثور على نتائج للرابط المدخل.", ephemeral=True)
-                    return
-                track = tracks[0]
-            except Exception as e:
-                await interaction.followup.send(f"حدث خطأ أثناء البحث عن الرابط: {e}", ephemeral=True)
+            # Set text channel for notifications
+            player.text_channel = text_channel
+            
+            # Search for track
+            is_youtube = "youtube.com" in url or "youtu.be" in url
+            
+            # Process based on URL type
+            if is_youtube:
+                tracks = await wavelink.YouTubeTrack.search(url)
+            else:
+                tracks = await wavelink.Track.search(url)
+            
+            if not tracks:
+                await interaction.followup.send("❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.", ephemeral=True)
                 return
             
-            # تشغيل المسار
-            await voice_client.play(track)
+            track = tracks[0]
+            track.requester = interaction.user
             
-            # إرسال رسالة تأكيد
-            embed = discord.Embed(
-                title="🎵 يتم التشغيل الآن",
-                description=f"**{track.title}**",
-                color=discord.Color.green()
-            )
-            embed.set_thumbnail(url=track.thumbnail)
-            embed.add_field(name="المدة", value=f"{int(track.duration // 60)}:{int(track.duration % 60):02d}")
-            embed.add_field(name="طلب بواسطة", value=interaction.user.mention)
-            
-            await interaction.followup.send(embed=embed)
-            
-            # إعادة تعيين الرابط
-            self.link = None
-            
+            # Play the track
+            if player.playing:
+                # Add to queue
+                temp_voice_cog = self.bot.get_cog("TempVoice")
+                if temp_voice_cog:
+                    if not hasattr(temp_voice_cog, "song_queue"):
+                        temp_voice_cog.song_queue = {}
+                    
+                    guild_id = voice_channel.guild.id
+                    if guild_id not in temp_voice_cog.song_queue:
+                        temp_voice_cog.song_queue[guild_id] = []
+                    
+                    temp_voice_cog.song_queue[guild_id].append(track)
+                    
+                    await interaction.followup.send(f"✅ تمت إضافة **{track.title}** إلى قائمة الانتظار.", ephemeral=True)
+            else:
+                # Play immediately
+                await player.play(track)
+                
+                # Store currently playing track
+                temp_voice_cog = self.bot.get_cog("TempVoice")
+                if temp_voice_cog:
+                    if not hasattr(temp_voice_cog, "now_playing"):
+                        temp_voice_cog.now_playing = {}
+                    
+                    temp_voice_cog.now_playing[voice_channel.guild.id] = track
+                
+                # Create embed with track info
+                embed = discord.Embed(
+                    title="🎵 الآن يتم تشغيل",
+                    description=f"**{track.title}**",
+                    color=discord.Color.blue()
+                )
+                
+                # Add duration and requester
+                embed.add_field(name="المدة", value=self._format_duration(track.duration), inline=True)
+                embed.add_field(name="مطلوبة بواسطة", value=interaction.user.mention, inline=True)
+                
+                # Add thumbnail if from YouTube
+                if is_youtube and hasattr(track, 'identifier'):
+                    embed.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/maxresdefault.jpg")
+                
+                await text_channel.send(embed=embed)
+                await interaction.followup.send("✅ تم بدء تشغيل المحتوى الصوتي.", ephemeral=True)
+                
         except Exception as e:
-            await interaction.followup.send(f"حدث خطأ أثناء التشغيل: {e}", ephemeral=True)
+            logger.error(f"Error playing track: {str(e)}")
+            await interaction.followup.send(f"❌ حدث خطأ أثناء تشغيل المحتوى: {str(e)}", ephemeral=True)
+    
+    def _format_duration(self, duration_ms: int) -> str:
+        """تنسيق مدة المحتوى الصوتي"""
+        seconds = int(duration_ms / 1000)
+        minutes, seconds = divmod(seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        
+        if hours > 0:
+            return f"{hours}:{minutes:02d}:{seconds:02d}"
+        else:
+            return f"{minutes}:{seconds:02d}"
+
 
 class TempVoice(commands.Cog):
+    """نظام الغرف الصوتية المؤقتة"""
+    
     def __init__(self, bot):
         self.bot = bot
-        # قاموس لتخزين معلومات الغرف المؤقتة: {user_id: {"voice_id": voice_channel_id, "text_id": text_channel_id}}
-        self.user_voice_rooms = {}
-        # قاموس لتخزين معلومات واجهات التحكم: {text_channel_id: MusicControlView}
-        self.control_views = {}
-
+        self.temp_channels: Dict[int, Dict[str, int]] = {}  # {guild_id: {voice_channel_id: text_channel_id}}
+        self.create_channel_name = "إنشاء غرفة صوتية"
+        self.song_queue = {}  # {guild_id: [tracks]}
+        self.now_playing = {}  # {guild_id: track}
+    
     @commands.Cog.listener()
     async def on_ready(self):
-        # إعادة تسجيل واجهات التحكم بعد إعادة تشغيل البوت
-        self.bot.add_view(MusicControlView(self, None, None))
+        """يتم استدعاؤها عندما يكون البوت جاهزاً"""
+        logger.info("✅ تم تحميل نظام الغرف الصوتية المؤقتة")
+    
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """يتم استدعاؤها عند تغيير حالة الصوت للعضو"""
+        # Skip bot voice state updates
+        if member.bot:
+            return
         
-        # الاتصال بخادم Lavalink
-        self.lavalink_connected = False  # متغير لتتبع حالة الاتصال
+        # Handle channel creation
+        if after.channel and after.channel.name == self.create_channel_name:
+            await self._create_temp_channel(member, after.channel)
+        
+        # Handle channel deletion
+        if before.channel and not after.channel:
+            await self._check_empty_channel(before.channel)
+    
+    async def _create_temp_channel(self, member: discord.Member, create_channel: discord.VoiceChannel):
+        """إنشاء غرفة صوتية مؤقتة"""
+        guild = member.guild
         
         try:
-            # قائمة محدثة من خوادم Lavalink العامة الموثوقة
-            nodes = [
-                # خادم 1 - من المشروع الرسمي لـ Lavalink
-                wavelink.Node(
-                    uri="https://lava.link",
-                    password="anything as a password"
-                ),
-                # خادم 2
-                wavelink.Node(
-                    uri="https://lavalink.darrennathanael.com",
-                    password="JdJK7YnX"
-                ),
-                # خادم 3
-                wavelink.Node(
-                    uri="https://lavalink.mariliun.ml",
-                    password="lavaliun"
-                ),
-                # خادم 4
-                wavelink.Node(
-                    uri="https://lavalink.oops.wtf",
-                    password="www.freelavalink.ga"
-                )
-            ]
-            
-            # محاولة الاتصال بالخوادم العامة
-            await wavelink.Pool.connect(nodes=nodes, client=self.bot)
-            self.lavalink_connected = True
-            print("[TempVoice] تم الاتصال بخادم Lavalink بنجاح")
-            
-        except Exception as e:
-            print(f"[TempVoice] خطأ في الاتصال بخوادم Lavalink العامة: {e}")
-            
-            # محاولة الاتصال بخادم محلي
-            try:
-                local_node = wavelink.Node(
-                    uri="http://localhost:2333",
-                    password="youshallnotpass"
-                )
-                await wavelink.Pool.connect(nodes=[local_node], client=self.bot)
-                self.lavalink_connected = True
-                print("[TempVoice] تم الاتصال بخادم Lavalink المحلي بنجاح")
-            except Exception as e2:
-                print(f"[TempVoice] خطأ في الاتصال بخادم Lavalink المحلي: {e2}")
-                print("[TempVoice] لا يمكن الاتصال بأي خادم Lavalink. سيتم إنشاء الغرف المؤقتة بدون ميزة تشغيل الموسيقى.")
-
-
-
-
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        guild = member.guild
-        create_channel_name = "إنشاء غرفة صوتية"
-        
-        # 1. إنشاء غرفة صوتية مؤقتة عند دخول المستخدم لقناة الإنشاء
-        if after.channel and after.channel.name == create_channel_name:
-            # إنشاء الغرفة الصوتية
-            category = after.channel.category
-            channel_name = f"غرفة {member.display_name}"
-            
-            # إنشاء الغرفة الصوتية
-            temp_voice_channel = await guild.create_voice_channel(
-                name=channel_name,
-                category=category,
-                reason=f"غرفة مؤقتة لـ {member.display_name}"
+            # Create voice channel
+            voice_channel = await guild.create_voice_channel(
+                name=f"غرفة {member.display_name}",
+                category=create_channel.category,
+                reason="إنشاء غرفة صوتية مؤقتة"
             )
             
-            # إنشاء غرفة نصية خاصة
-            temp_text_channel = await guild.create_text_channel(
+            # Set permissions for the creator
+            await voice_channel.set_permissions(member, connect=True, speak=True)
+            
+            # Create text channel (visible only to the creator and the bot)
+            text_channel = await guild.create_text_channel(
                 name=f"تحكم-{member.display_name}",
-                category=category,
-                reason=f"غرفة تحكم لـ {member.display_name}"
+                category=create_channel.category,
+                reason="إنشاء غرفة نصية للتحكم بالغرفة الصوتية المؤقتة"
             )
             
-            # تعيين صلاحيات الغرفة النصية
-            # إخفاء الغرفة عن الجميع
-            await temp_text_channel.set_permissions(guild.default_role, read_messages=False)
-            # السماح للمستخدم بالوصول
-            await temp_text_channel.set_permissions(member, read_messages=True, send_messages=True)
-            # السماح للبوت بالوصول
-            await temp_text_channel.set_permissions(guild.me, read_messages=True, send_messages=True)
+            # Set permissions for the text channel
+            await text_channel.set_permissions(guild.default_role, read_messages=False)
+            await text_channel.set_permissions(member, read_messages=True, send_messages=True)
+            await text_channel.set_permissions(self.bot.user, read_messages=True, send_messages=True)
             
-            # نقل المستخدم للغرفة الجديدة
-            await member.move_to(temp_voice_channel)
+            # Store channel IDs
+            if guild.id not in self.temp_channels:
+                self.temp_channels[guild.id] = {}
             
-            # تخزين معلومات الغرف
-            self.user_voice_rooms[member.id] = {
-                "voice_id": temp_voice_channel.id,
-                "text_id": temp_text_channel.id
-            }
+            self.temp_channels[guild.id][voice_channel.id] = text_channel.id
             
-            # إنشاء واجهة التحكم
-            view = MusicControlView(self, temp_voice_channel.id, temp_text_channel.id)
-            self.control_views[temp_text_channel.id] = view
+            # Move member to the new voice channel
+            await member.move_to(voice_channel)
             
-            # إرسال رسالة الترحيب مع واجهة التحكم
+            # Connect bot to the voice channel
+            player = await voice_channel.connect(cls=wavelink.Player)
+            player.text_channel = text_channel
+            
+            # Send welcome message with controls
             embed = discord.Embed(
-                title=f"🎵 مرحباً بك في غرفتك الخاصة",
-                description="استخدم الأزرار أدناه للتحكم بالموسيقى",
+                title=f"🎵 غرفة {member.display_name} الصوتية",
+                description="أهلاً بك في غرفتك الصوتية المؤقتة!\nيمكنك استخدام الأزرار أدناه للتحكم بالمحتوى الصوتي.",
                 color=discord.Color.blue()
             )
-            embed.add_field(name="أدخل رابط التشغيل", value="اضغط على زر التشغيل لإدخال رابط YouTube أو أي رابط صوتي آخر")
-            embed.set_footer(text="سيتم حذف الغرفة تلقائياً عند خروج جميع الأعضاء منها")
             
-            await temp_text_channel.send(embed=embed, view=view)
+            embed.add_field(
+                name="📝 تعليمات",
+                value="1. أدخل رابط التشغيل في الحقل المخصص\n"
+                      "2. اضغط على زر التشغيل\n"
+                      "3. سيبدأ تشغيل المحتوى الصوتي في الغرفة",
+                inline=False
+            )
             
-            # دخول البوت للغرفة الصوتية
-            try:
-                # تحقق إذا كان البوت متصل بغرفة أخرى
-                if guild.me.voice and guild.me.voice.channel:
-                    # إذا كان متصل بغرفة أخرى، افصله أولاً
-                    voice_client = guild.voice_client
-                    if voice_client:
-                        await voice_client.disconnect(force=True)
-                
-                # اتصال البوت بالغرفة الجديدة
-                await temp_voice_channel.connect(cls=wavelink.Player)
-            except Exception as e:
-                await temp_text_channel.send(f"حدث خطأ أثناء اتصال البوت: {e}")
+            # Create view with controls
+            view = MusicControlView(self.bot, voice_channel.id, text_channel.id)
+            
+            await text_channel.send(embed=embed, view=view)
+            
+            logger.info(f"Created temporary voice channel for {member.display_name} in {guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error creating temporary voice channel: {str(e)}")
+            # Move member back to the create channel if possible
+            if member.voice:
+                await member.move_to(create_channel)
+    
+    async def _check_empty_channel(self, channel: discord.VoiceChannel):
+        """التحقق من الغرفة الصوتية إذا كانت فارغة"""
+        # Wait a moment to ensure the channel is actually empty
+        await asyncio.sleep(1)
         
-        # 2. حذف الغرفة عند خروج جميع الأعضاء
-        if before.channel:
-            # تحقق إذا كانت غرفة مؤقتة (بالبحث في القاموس)
-            temp_voice_channels = [room_data["voice_id"] for room_data in self.user_voice_rooms.values()]
-            
-            if before.channel.id in temp_voice_channels and len(before.channel.members) == 0:
-                # البحث عن معلومات الغرفة
-                user_id = None
-                for uid, room_data in self.user_voice_rooms.items():
-                    if room_data["voice_id"] == before.channel.id:
-                        user_id = uid
-                        break
+        guild = channel.guild
+        
+        # Check if this is a temporary channel
+        if guild.id in self.temp_channels and channel.id in self.temp_channels[guild.id]:
+            # Check if the channel is empty (no non-bot members)
+            if not any(not member.bot for member in channel.members):
+                # Get associated text channel
+                text_channel_id = self.temp_channels[guild.id][channel.id]
+                text_channel = guild.get_channel(text_channel_id)
                 
-                if user_id:
-                    room_data = self.user_voice_rooms[user_id]
-                    
-                    # حذف الغرفة الصوتية
-                    voice_channel = guild.get_channel(room_data["voice_id"])
-                    if voice_channel:
-                        await voice_channel.delete(reason="الغرفة المؤقتة أصبحت فارغة")
-                    
-                    # حذف الغرفة النصية
-                    text_channel = guild.get_channel(room_data["text_id"])
+                # Disconnect bot if connected
+                try:
+                    player = wavelink.Pool.get_node().get_player(guild.id)
+                    if player and player.channel and player.channel.id == channel.id:
+                        await player.disconnect()
+                        
+                        # Clean up queue and now playing
+                        if guild.id in self.song_queue:
+                            self.song_queue[guild.id] = []
+                        
+                        if guild.id in self.now_playing:
+                            del self.now_playing[guild.id]
+                except Exception as e:
+                    logger.error(f"Error disconnecting player: {str(e)}")
+                
+                # Delete channels
+                try:
                     if text_channel:
-                        await text_channel.delete(reason="الغرفة المؤقتة أصبحت فارغة")
+                        await text_channel.delete(reason="الغرفة الصوتية المؤقتة أصبحت فارغة")
                     
-                    # حذف معلومات الغرفة من القاموس
-                    del self.user_voice_rooms[user_id]
+                    await channel.delete(reason="الغرفة الصوتية المؤقتة أصبحت فارغة")
                     
-                    # حذف واجهة التحكم
-                    if room_data["text_id"] in self.control_views:
-                        del self.control_views[room_data["text_id"]]
+                    # Remove from tracking
+                    del self.temp_channels[guild.id][channel.id]
+                    if not self.temp_channels[guild.id]:
+                        del self.temp_channels[guild.id]
+                    
+                    logger.info(f"Deleted empty temporary voice channel in {guild.name}")
+                except Exception as e:
+                    logger.error(f"Error deleting temporary channels: {str(e)}")
+    
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, player: wavelink.Player, track, reason):
+        """عند انتهاء المسار"""
+        guild_id = player.guild.id
+        
+        # Check if this is a temporary voice channel
+        is_temp_channel = False
+        for guild_data in self.temp_channels.values():
+            if player.channel.id in guild_data:
+                is_temp_channel = True
+                break
+        
+        if not is_temp_channel:
+            return
+        
+        # Check if there's content in the queue
+        if guild_id in self.song_queue and self.song_queue[guild_id]:
+            # Play next track in queue
+            next_track = self.song_queue[guild_id].pop(0)
+            await player.play(next_track)
+            
+            # Update current track
+            self.now_playing[guild_id] = next_track
+            
+            # Send message with new track
+            embed = discord.Embed(
+                title="🎵 الآن يتم تشغيل",
+                description=f"**{next_track.title}**",
+                color=discord.Color.blue()
+            )
+            
+            # Add duration and requester
+            embed.add_field(name="المدة", value=self._format_duration(next_track.duration), inline=True)
+            embed.add_field(name="مطلوبة بواسطة", value=next_track.requester.mention, inline=True)
+            
+            # Add thumbnail if from YouTube
+            is_youtube = hasattr(next_track, 'uri') and ("youtube.com" in next_track.uri or "youtu.be" in next_track.uri)
+            if is_youtube and hasattr(next_track, 'identifier'):
+                embed.set_thumbnail(url=f"https://img.youtube.com/vi/{next_track.identifier}/maxresdefault.jpg")
+            
+            channel = player.text_channel
+            if channel:
+                await channel.send(embed=embed)
+        else:
+            # No additional content
+            if guild_id in self.now_playing:
+                del self.now_playing[guild_id]
+    
+    def _format_duration(self, duration_ms: int) -> str:
+        """تنسيق مدة المحتوى الصوتي"""
+        seconds = int(duration_ms / 1000)
+        minutes, seconds = divmod(seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        
+        if hours > 0:
+            return f"{hours}:{minutes:02d}:{seconds:02d}"
+        else:
+            return f"{minutes}:{seconds:02d}"
+    
+    @commands.command(
+        name="إنشاء_غرفة",
+        aliases=["create_voice", "temp_voice", "غرفة_صوتية"],
+        description="إنشاء قناة إنشاء الغرف الصوتية المؤقتة"
+    )
+    @commands.has_permissions(administrator=True)
+    async def create_voice_channel(self, ctx):
+        """إنشاء قناة إنشاء الغرف الصوتية المؤقتة"""
+        guild = ctx.guild
+        
+        try:
+            # Check if channel already exists
+            for channel in guild.voice_channels:
+                if channel.name == self.create_channel_name:
+                    await ctx.send(f"❌ قناة '{self.create_channel_name}' موجودة بالفعل!")
+                    return
+            
+            # Create the channel
+            channel = await guild.create_voice_channel(
+                name=self.create_channel_name,
+                reason="إنشاء قناة إنشاء الغرف الصوتية المؤقتة"
+            )
+            
+            await ctx.send(f"✅ تم إنشاء قناة '{self.create_channel_name}' بنجاح!\n"
+                          f"عندما يدخل أي عضو إلى هذه القناة، سيتم إنشاء غرفة صوتية مؤقتة له.")
+            
+        except Exception as e:
+            await ctx.send(f"❌ حدث خطأ أثناء إنشاء القناة: {str(e)}")
+
 
 async def setup(bot):
+    """إعداد الإضافة"""
     await bot.add_cog(TempVoice(bot))
