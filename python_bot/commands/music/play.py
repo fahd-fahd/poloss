@@ -97,85 +97,48 @@ class MusicPlayer(commands.Cog):
     async def connect_nodes(self):
         """الاتصال بخوادم Wavelink"""
         try:
-            # قائمة موسعة من العقد مع خيارات اتصال متعددة لزيادة الموثوقية
+            # قائمة العقد متوافقة مع إصدار wavelink المثبت
             nodes = [
                 # العقدة الاساسية - Lavalink قياسي
                 wavelink.Node(
                     uri="http://lavalink.clxud.dev:2333",
                     password="youshallnotpass",
-                    secure=False,
-                    identifier="Main-Node",
-                    search_only=False,
-                    retries=5,
-                    retry_delay=3.0
+                    identifier="Main-Node"
                 ),
-                # العقدة الثانية - Lavalink مع دعم اضافي
-                wavelink.Node(
-                    uri="https://lavalink.devz.cloud:443", 
-                    password="lavalink", 
-                    secure=True,
-                    identifier="Secure-Node",
-                    search_only=False,
-                    retries=3,
-                    retry_delay=2.0
-                ),
-                # العقدة الثالثة
+                # العقدة الثانية
                 wavelink.Node(
                     uri="http://lava.link:80",
                     password="anything as a password",
-                    secure=False,
-                    identifier="Public-Node",
-                    search_only=False,
-                    retries=3,
-                    retry_delay=2.0
+                    identifier="Public-Node"
                 ),
                 # عقدة احتياطية
                 wavelink.Node(
                     uri="http://node.rexking.xyz:2333", 
                     password="RexLavalinkServer", 
-                    secure=False,
-                    identifier="Backup-Node-1",
-                    search_only=False,
-                    retries=3,
-                    retry_delay=2.0
+                    identifier="Backup-Node-1"
                 ),
-                # عقدة إضافية للبحث
+                # عقدة محلية
                 wavelink.Node(
                     uri="http://localhost:2333",  # للتشغيل المحلي إذا كان متاحًا
                     password="youshallnotpass",
-                    secure=False,
-                    identifier="Local-Node",
-                    search_only=True,
-                    retries=2,
-                    retry_delay=1.0
+                    identifier="Local-Node"
                 )
             ]
             
             # محاولة الاتصال بجميع العقد
-            await wavelink.Pool.connect(client=self.bot, nodes=nodes)
+            await wavelink.NodePool.connect(client=self.bot, nodes=nodes)
             
             print(f"✅ تم الاتصال بعقد Wavelink")
             connected_nodes = 0
-            for node in wavelink.Pool.nodes.values():
-                if node.is_connected():
-                    connected_nodes += 1
-                    print(f"  ✓ متصل بـ: {node.identifier} ({node.uri})")
-                else:
-                    print(f"  ✗ فشل الاتصال بـ: {node.identifier} ({node.uri})")
-            
-            if connected_nodes == 0:
-                raise Exception("لم يتم الاتصال بأي عقدة")
+            for i, node in enumerate(wavelink.NodePool.get_node().pool.nodes):
+                connected_nodes += 1
+                print(f"  ✓ متصل بـ: {node.identifier} ({node.uri})")
             
             print(f"  ℹ️ عدد العقد المتصلة: {connected_nodes}/{len(nodes)}")
             
-            # تسجيل معالجات الأحداث
-            @wavelink.Pool.listen(wavelink.TrackStart)
-            async def on_track_start(payload: wavelink.TrackStart):
-                print(f"🎵 بدأ تشغيل المسار: {payload.track.title} (على العقدة: {payload.player.node.identifier})")
-            
-            @wavelink.Pool.listen(wavelink.TrackEnd)
-            async def on_track_end(payload: wavelink.TrackEnd):
-                print(f"🛑 انتهى تشغيل المسار: {payload.track.title} (على العقدة: {payload.player.node.identifier})")
+            # تسجيل معالجات الأحداث لمتابعة المسارات
+            self.bot.add_listener(self.on_wavelink_track_start, "on_wavelink_track_start")
+            self.bot.add_listener(self.on_wavelink_track_end, "on_wavelink_track_end")
             
             # السماح للمستخدمين بمعرفة أن النظام جاهز
             for guild in self.bot.guilds:
@@ -197,25 +160,23 @@ class MusicPlayer(commands.Cog):
             
             # قائمة بالعقد البديلة للمحاولة
             fallback_nodes = [
-                ("http://lavalink.clxud.dev:2333", "youshallnotpass", False, "Fallback-1"),
-                ("https://lavalink.devz.cloud:443", "lavalink", True, "Fallback-2"),
-                ("http://node.rexking.xyz:2333", "RexLavalinkServer", False, "Fallback-3"),
-                ("http://lava.link:80", "anything as a password", False, "Fallback-4"),
-                ("http://lavasrc.jeorge-1.repl.co:31401", "lavasrciscool", False, "Fallback-5"),
-                ("http://46.4.104.234:2333", "discord123", False, "Fallback-6")
+                ("http://lavalink.clxud.dev:2333", "youshallnotpass", "Fallback-1"),
+                ("http://lava.link:80", "anything as a password", "Fallback-4"),
+                ("http://node.rexking.xyz:2333", "RexLavalinkServer", "Fallback-3"),
+                ("http://46.4.104.234:2333", "discord123", "Fallback-6"),
+                ("http://localhost:2333", "youshallnotpass", "Local")
             ]
             
-            for uri, password, secure, identifier in fallback_nodes:
+            for uri, password, identifier in fallback_nodes:
                 try:
                     node = wavelink.Node(
                         uri=uri,
                         password=password,
-                        secure=secure,
                         identifier=identifier
                     )
                     
                     # محاولة الاتصال بالعقدة
-                    await node.connect(client=self.bot)
+                    await wavelink.NodePool.connect(client=self.bot, nodes=[node])
                     print(f"✅ تم الاتصال بعقدة بديلة: {identifier} ({uri})")
                     connected = True
                     break
@@ -226,15 +187,26 @@ class MusicPlayer(commands.Cog):
             if not connected:
                 print("⚠️ فشلت جميع محاولات الاتصال بالعقد. قد لا تعمل ميزات الصوت بشكل صحيح.")
                 
-                # إنشاء عقدة محلية وهمية للتشغيل المباشر
+                # محاولة أخيرة باستخدام عقدة محلية
                 try:
-                    from discord import FFmpegPCMAudio
-                    print("ℹ️ تمكين وضع الطوارئ للصوت (الدعم المحدود)")
-                except ImportError:
-                    print("❌ لا يمكن استخدام وضع الطوارئ للصوت. تأكد من تثبيت FFmpeg.")
+                    node = wavelink.Node(
+                        uri="http://127.0.0.1:2333",
+                        password="youshallnotpass",
+                        identifier="Emergency-Local"
+                    )
+                    await wavelink.NodePool.connect(client=self.bot, nodes=[node])
+                    print("✅ تم الاتصال بعقدة محلية للطوارئ")
+                except Exception as e:
+                    print(f"❌ فشل الاتصال بالعقدة المحلية: {str(e)}")
+                    print("ℹ️ تأكد من تثبيت Java وتشغيل Lavalink.jar")
 
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player: wavelink.Player, track, reason):
+    async def on_wavelink_track_start(self, player, track):
+        """يتم استدعاؤها عند بدء تشغيل مسار"""
+        print(f"🎵 بدء تشغيل المسار: {track.title}")
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, player, track, reason):
         """عند انتهاء المسار"""
         guild_id = player.guild.id
         
@@ -394,34 +366,18 @@ class MusicPlayer(commands.Cog):
         try:
             # محاولة الحصول على عقدة بعدة طرق
             try:
-                # الطريقة 1: الحصول على عقدة نشطة من الـ Pool
-                node = wavelink.Pool.get_best_node()
+                # الطريقة الرئيسية: استخدام NodePool.get_node()
+                node = wavelink.NodePool.get_node()
                 if node:
                     return node
             except Exception as e:
-                print(f"الطريقة 1 فشلت: {str(e)}")
-            
-            try:
-                # الطريقة 2: الحصول على أي عقدة من nodes
-                node = wavelink.nodes.get_node()
-                if node:
-                    return node
-            except Exception as e:
-                print(f"الطريقة 2 فشلت: {str(e)}")
-            
-            try:
-                # الطريقة 3: الحصول على جميع العقد والتحقق منها
-                for node_id, node in wavelink.Pool.nodes.items():
-                    if node.is_connected():
-                        return node
-            except Exception as e:
-                print(f"الطريقة 3 فشلت: {str(e)}")
+                print(f"فشل الحصول على عقدة: {str(e)}")
             
             # إذا وصلنا إلى هنا، حاول الاتصال مرة أخرى
             await self.connect_nodes()
             
             # محاولة أخيرة للحصول على عقدة
-            node = wavelink.Pool.get_best_node()
+            node = wavelink.NodePool.get_node()
             if node:
                 return node
             
@@ -512,8 +468,6 @@ class MusicPlayer(commands.Cog):
 
     async def _resolve_youtube(self, url, node, message):
         """معالجة روابط يوتيوب"""
-        # نسخة محسنة من معالج روابط يوتيوب
-        
         # تنظيف الرابط من المعلمات غير الضرورية
         clean_url = url.split('&')[0]  # إزالة المعلمات بعد العلامة &
         
@@ -531,8 +485,8 @@ class MusicPlayer(commands.Cog):
         # مسار التنفيذ الأساسي
         try:
             # محاولة 1: استخدام الرابط المنظف مع YouTubeTrack
-            tracks = await wavelink.YouTubeTrack.search(clean_url, return_first=False)
-            if tracks and len(tracks) > 0:
+            tracks = await wavelink.YouTubeTrack.search(clean_url)
+            if tracks:
                 await message.edit(content=f"✅ تم العثور على المحتوى: {tracks[0].title}")
                 return tracks[0]
         except Exception as e:
@@ -542,8 +496,8 @@ class MusicPlayer(commands.Cog):
         if video_id:
             try:
                 direct_url = f"https://www.youtube.com/watch?v={video_id}"
-                tracks = await wavelink.YouTubeTrack.search(direct_url, return_first=False)
-                if tracks and len(tracks) > 0:
+                tracks = await wavelink.YouTubeTrack.search(direct_url)
+                if tracks:
                     await message.edit(content=f"✅ تم العثور على المحتوى (بمعرف الفيديو المباشر): {tracks[0].title}")
                     return tracks[0]
             except Exception as e:
@@ -551,8 +505,8 @@ class MusicPlayer(commands.Cog):
         
         # محاولة 3: استخدام node.get_tracks
         try:
-            tracks = await node.get_tracks(wavelink.YouTubeTrack, clean_url)
-            if tracks and len(tracks) > 0:
+            tracks = await node.get_tracks(clean_url)
+            if tracks:
                 await message.edit(content=f"✅ تم العثور على المحتوى (باستخدام node): {tracks[0].title}")
                 return tracks[0]
         except Exception as e:
@@ -562,8 +516,8 @@ class MusicPlayer(commands.Cog):
         if video_id:
             try:
                 search_query = f"ytsearch:{video_id}"
-                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-                if tracks and len(tracks) > 0:
+                tracks = await node.get_tracks(search_query)
+                if tracks:
                     await message.edit(content=f"✅ تم العثور على المحتوى (باستخدام معرف البحث): {tracks[0].title}")
                     return tracks[0]
             except Exception as e:
@@ -583,8 +537,8 @@ class MusicPlayer(commands.Cog):
                 
                 # استخدام النص في بحث
                 search_query = f"ytsearch:{search_text}"
-                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-                if tracks and len(tracks) > 0:
+                tracks = await node.get_tracks(search_query)
+                if tracks:
                     await message.edit(content=f"✅ تم العثور على محتوى مشابه: {tracks[0].title}")
                     return tracks[0]
         except Exception as e:
@@ -597,24 +551,32 @@ class MusicPlayer(commands.Cog):
     async def _resolve_soundcloud(self, url, node, message):
         """معالجة روابط ساوند كلاود"""
         try:
-            # الطريقة 1: استخدام SoundcloudTrack
-            tracks = await wavelink.SoundCloudTrack.search(url, return_first=False)
+            # استخدام get_tracks
+            tracks = await node.get_tracks(url)
             if tracks:
+                await message.edit(content=f"✅ تم العثور على مسار SoundCloud: {tracks[0].title}")
                 return tracks[0]
         except Exception as e:
             print(f"فشل تحليل SoundCloud بالطريقة 1: {str(e)}")
         
+        # محاولة باستخدام scsearch
         try:
-            # الطريقة 2: استخدام node.get_tracks
-            tracks = await node.get_tracks(wavelink.SoundCloudTrack, url)
+            search_query = f"scsearch:{url.split('/')[-1]}"
+            tracks = await node.get_tracks(search_query)
             if tracks:
+                await message.edit(content=f"✅ تم العثور على مسار SoundCloud بديل: {tracks[0].title}")
                 return tracks[0]
         except Exception as e:
             print(f"فشل تحليل SoundCloud بالطريقة 2: {str(e)}")
         
-        # إذا وصلنا إلى هنا، فقد فشلت جميع المحاولات
-        await message.edit(content="❌ لم يتم العثور على محتوى صالح في رابط SoundCloud المحدد.")
-        return None
+        # إذا وصلنا إلى هنا، فقد فشلت جميع المحاولات، حاول البحث عن طريق يوتيوب
+        await message.edit(content="⚠️ تعذر تحليل رابط SoundCloud. محاولة البحث عن محتوى مشابه...")
+        try:
+            title_part = url.split('/')[-1].replace('-', ' ')
+            return await self._search_youtube(f"soundcloud {title_part}", node, message)
+        except Exception:
+            await message.edit(content="❌ لم يتم العثور على محتوى صالح في رابط SoundCloud المحدد.")
+            return None
 
     async def _resolve_spotify(self, url, node, message):
         """معالجة روابط سبوتيفاي"""
@@ -642,14 +604,12 @@ class MusicPlayer(commands.Cog):
         except Exception as e:
             print(f"فشل تحليل Spotify بالطريقة 2: {str(e)}")
         
-        # إذا وصلنا إلى هنا، فقد فشلت جميع المحاولات، حاول البحث بشكل عام
-        await message.edit(content="⚠️ لم يتم التعرف على معلومات الأغنية من رابط Spotify. جاري البحث عن بدائل...")
-        
+        # إذا وصلنا إلى هنا، فقد فشلت جميع المحاولات، حاول البحث عن طريق يوتيوب
+        await message.edit(content="⚠️ تعذر تحليل رابط Spotify. محاولة البحث عن محتوى مشابه...")
         try:
-            # استخراج نص من الرابط وبحث كآخر محاولة
-            search_text = url.split('/')[-1].replace('-', ' ')
-            return await self._search_youtube(search_text, node, message)
-        except Exception as e:
+            title_part = url.split('/')[-1].replace('-', ' ')
+            return await self._search_youtube(f"spotify {title_part}", node, message)
+        except Exception:
             await message.edit(content="❌ لم يتم العثور على محتوى صالح في رابط Spotify المحدد.")
             return None
 
@@ -659,32 +619,24 @@ class MusicPlayer(commands.Cog):
         
         # محاولة 1: استخدام Track عام
         try:
-            tracks = await wavelink.Track.search(url, return_first=False)
-            if tracks and len(tracks) > 0:
+            tracks = await node.get_tracks(url)
+            if tracks:
                 await message.edit(content=f"✅ تم العثور على المحتوى: {tracks[0].title or 'محتوى صوتي'}")
                 return tracks[0]
         except Exception as e:
             print(f"فشل تحليل الرابط العام بالطريقة 1: {str(e)}")
         
-        # محاولة 2: استخدام Playable.search
+        # محاولة 2: استخدام ytsearch مع URL
         try:
-            track = await wavelink.Playable.search(url)
-            if track:
-                await message.edit(content=f"✅ تم العثور على المحتوى: {track.title or 'محتوى صوتي'}")
-                return track
+            search_query = f"ytsearch:{url}"
+            tracks = await node.get_tracks(search_query)
+            if tracks:
+                await message.edit(content=f"✅ تم العثور على بديل للرابط: {tracks[0].title}")
+                return tracks[0]
         except Exception as e:
             print(f"فشل تحليل الرابط العام بالطريقة 2: {str(e)}")
         
-        # محاولة 3: استخدام node.get_tracks مباشرة
-        try:
-            tracks = await node.get_tracks(wavelink.Track, url)
-            if tracks and len(tracks) > 0:
-                await message.edit(content=f"✅ تم العثور على المحتوى: {tracks[0].title or 'محتوى صوتي'}")
-                return tracks[0]
-        except Exception as e:
-            print(f"فشل تحليل الرابط العام بالطريقة 3: {str(e)}")
-        
-        # محاولة 4: استخدام معالجات محددة حسب اسم المجال
+        # محاولة 3: استخدام معالجات محددة حسب اسم المجال
         domain = re.search(r'https?://(?:www\.)?([^/]+)', url)
         if domain:
             domain_name = domain.group(1).lower()
@@ -697,68 +649,30 @@ class MusicPlayer(commands.Cog):
                 search_term = title_match.group(1).replace('-', ' ') if title_match else "facebook video"
                 return await self._search_youtube(search_term, node, message)
             
-            # روابط Instagram
-            elif "instagram.com" in domain_name:
-                await message.edit(content="⚠️ روابط Instagram غير مدعومة مباشرة. جاري البحث عن بديل...")
-                # استخراج اسم المستخدم والمحتوى
-                if '/p/' in url:
-                    username = re.search(r'instagram\.com/([^/]+)', url)
-                    if username:
-                        search_term = f"{username.group(1)} instagram"
-                        return await self._search_youtube(search_term, node, message)
-                return await self._search_youtube("instagram reels", node, message)
-            
-            # روابط Twitter/X
-            elif "twitter.com" in domain_name or "x.com" in domain_name:
-                await message.edit(content="⚠️ روابط Twitter غير مدعومة مباشرة. جاري البحث عن بديل...")
-                # استخراج معرف التغريدة
-                tweet_id = re.search(r'/status/(\d+)', url)
-                if tweet_id:
-                    return await self._search_youtube(f"twitter {tweet_id.group(1)}", node, message)
-                return await self._search_youtube("twitter video", node, message)
-            
-            # روابط TikTok
-            elif "tiktok.com" in domain_name:
-                await message.edit(content="⚠️ روابط TikTok غير مدعومة مباشرة. جاري البحث عن بديل...")
-                # استخراج معرف المستخدم
-                username = re.search(r'/@([^/]+)', url)
-                if username:
-                    return await self._search_youtube(f"tiktok {username.group(1)}", node, message)
-                return await self._search_youtube("tiktok video", node, message)
+            # روابط مواقع التواصل الأخرى
+            elif any(site in domain_name for site in ["instagram.com", "twitter.com", "x.com", "tiktok.com"]):
+                await message.edit(content=f"⚠️ روابط {domain_name} غير مدعومة مباشرة. جاري البحث عن بديل...")
+                # استخراج أي معرفات مفيدة من عنوان URL
+                last_part = url.split('/')[-1]
+                search_term = last_part.replace('-', ' ').replace('_', ' ')
+                if len(search_term) > 3:
+                    return await self._search_youtube(f"{domain_name} {search_term}", node, message)
+                else:
+                    return await self._search_youtube(f"{domain_name} video", node, message)
         
-        # محاولة 5: فحص إذا كان الرابط يحتوي على معلومات m3u8 (بث مباشر)
+        # محاولة 4: فحص إذا كان الرابط يحتوي على معلومات m3u8 (بث مباشر)
         if url.endswith(".m3u8") or "m3u8" in url:
             try:
-                # إنشاء مسار يدويًا للبث المباشر
-                import datetime
-                track_title = f"بث مباشر ({datetime.datetime.now().strftime('%H:%M:%S')})"
-                
                 # محاولة استخدام get_tracks مع تحديد خيار بث
-                try:
-                    tracks = await node.get_tracks(wavelink.Track, url)
-                    if tracks and len(tracks) > 0:
-                        await message.edit(content=f"✅ تم العثور على بث مباشر")
-                        return tracks[0]
-                except Exception:
-                    pass
-                
-                # إنشاء مسار يدوي للبث المباشر
-                from wavelink.tracks import Track
-                track = Track(
-                    id="livestream",
-                    info={
-                        "title": track_title,
-                        "uri": url,
-                        "length": 0,  # البث المباشر لا تنتهي طوله
-                        "isStream": True,
-                    }
-                )
-                await message.edit(content=f"✅ جاري بدء البث المباشر")
-                return track
+                tracks = await node.get_tracks(url)
+                if tracks:
+                    await message.edit(content=f"✅ تم العثور على بث مباشر")
+                    return tracks[0]
             except Exception as e:
                 print(f"فشل تحليل البث المباشر: {str(e)}")
+                await message.edit(content="❌ تعذر تشغيل البث المباشر. قد يكون تنسيق الرابط غير مدعوم.")
         
-        # محاولة 6: استخراج نص من الرابط وبحث كآخر محاولة
+        # محاولة 5: استخراج نص من الرابط وبحث كآخر محاولة
         try:
             # استخراج نص من الرابط
             url_parts = url.split('/')
@@ -785,8 +699,8 @@ class MusicPlayer(commands.Cog):
         
         # محاولة 1: استخدام YouTubeTrack.search
         try:
-            tracks = await wavelink.YouTubeTrack.search(query, return_first=False)
-            if tracks and len(tracks) > 0:
+            tracks = await wavelink.YouTubeTrack.search(query)
+            if tracks:
                 track = tracks[0]  # الحصول على المسار الأول
                 await message.edit(content=f"✅ تم العثور على: {track.title}")
                 return track
@@ -796,54 +710,36 @@ class MusicPlayer(commands.Cog):
         # محاولة 2: البحث عبر العقدة المحددة
         try:
             search_query = f"ytsearch:{query}"
-            tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-            if tracks and len(tracks) > 0:
+            tracks = await node.get_tracks(search_query)
+            if tracks:
                 track = tracks[0]  # الحصول على المسار الأول
                 await message.edit(content=f"✅ تم العثور على: {track.title}")
                 return track
         except Exception as e:
             print(f"فشل البحث في YouTube بالطريقة 2: {str(e)}")
         
-        # محاولة 3: البحث في جميع العقد المتاحة
-        try:
-            # محاولة الحصول على جميع العقد المتصلة
-            for node_id, alt_node in wavelink.Pool.nodes.items():
-                if alt_node.is_connected() and alt_node != node:
-                    try:
-                        search_query = f"ytsearch:{query}"
-                        tracks = await alt_node.get_tracks(wavelink.YouTubeTrack, search_query)
-                        if tracks and len(tracks) > 0:
-                            track = tracks[0]  # الحصول على المسار الأول
-                            await message.edit(content=f"✅ تم العثور على: {track.title} (من عقدة بديلة)")
-                            return track
-                    except Exception as e:
-                        print(f"فشل البحث في العقدة البديلة {node_id}: {str(e)}")
-                        continue
-        except Exception as e:
-            print(f"فشل البحث في العقد البديلة: {str(e)}")
-        
-        # محاولة 4: تبسيط البحث
+        # محاولة 3: تبسيط البحث
         if len(query.split()) > 2:
             # تبسيط الاستعلام باستخدام أول كلمتين فقط
             simplified_query = ' '.join(query.split()[:2])
             try:
                 search_query = f"ytsearch:{simplified_query}"
-                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-                if tracks and len(tracks) > 0:
+                tracks = await node.get_tracks(search_query)
+                if tracks:
                     track = tracks[0]
                     await message.edit(content=f"✅ تم العثور على نتيجة مشابهة: {track.title}")
                     return track
             except Exception as e:
                 print(f"فشل البحث المبسط: {str(e)}")
         
-        # محاولة 5: ترجمة الاستعلام إذا كان باللغة العربية
+        # محاولة 4: ترجمة الاستعلام إذا كان باللغة العربية
         if any('\u0600' <= c <= '\u06FF' for c in query):  # التحقق من وجود أحرف عربية
             try:
                 # استخدام استعلام يحتوي على "arabic" لتحسين النتائج
                 enhanced_query = f"arabic {' '.join(query.split()[:3])}"
                 search_query = f"ytsearch:{enhanced_query}"
-                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-                if tracks and len(tracks) > 0:
+                tracks = await node.get_tracks(search_query)
+                if tracks:
                     track = tracks[0]
                     await message.edit(content=f"✅ تم العثور على نتيجة للبحث العربي: {track.title}")
                     return track
@@ -1223,35 +1119,15 @@ class MusicPlayer(commands.Cog):
         await message.edit(content=f"🔍 جاري تحليل ملف صوتي مباشر...")
         
         try:
-            # محاولة 1: استخدام Track.search
-            tracks = await wavelink.Track.search(url, return_first=False)
-            if tracks and len(tracks) > 0:
+            # استخدام node.get_tracks
+            tracks = await node.get_tracks(url)
+            if tracks:
                 await message.edit(content=f"✅ تم تحليل الملف الصوتي: {tracks[0].title or 'ملف صوتي مباشر'}")
                 return tracks[0]
         except Exception as e:
-            print(f"فشل تحليل الملف المباشر بالطريقة 1: {str(e)}")
-        
-        try:
-            # محاولة 2: إنشاء Track يدوياً
-            track = await node.get_tracks(wavelink.Track, url)
-            if track:
-                await message.edit(content=f"✅ تم تحليل الملف الصوتي باستخدام العقدة")
-                return track[0]
-        except Exception as e:
-            print(f"فشل تحليل الملف المباشر بالطريقة 2: {str(e)}")
-        
-        # محاولة أخيرة باستخدام PlayableTrack
-        try:
-            # محاولة 3: استخدام Playable
-            track = await wavelink.Playable.search(url)
-            if track:
-                await message.edit(content=f"✅ تم تحليل الملف الصوتي باستخدام Playable")
-                return track
-        except Exception as e:
-            print(f"فشل تحليل الملف المباشر بالطريقة 3: {str(e)}")
-        
-        await message.edit(content="❌ تعذر تحليل الملف الصوتي. تأكد من أن الرابط صحيح.")
-        return None
+            print(f"فشل تحليل الملف المباشر: {str(e)}")
+            await message.edit(content="❌ تعذر تحليل الملف الصوتي. تأكد من أن الرابط صحيح ويشير إلى ملف صوتي مدعوم.")
+            return None
 
 async def setup(bot):
     """إعداد الصنف"""
