@@ -214,7 +214,19 @@ class MusicControls(commands.Cog):
         عرض معلومات الأغنية الحالية مع أزرار التحكم
         """
         # التحقق من وجود تشغيل حالي
-        player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+        try:
+            # استخدام wavelink.nodes بدلاً من NodePool
+            node = wavelink.nodes.get_node()
+            if node:
+                player = node.get_player(ctx.guild.id)
+            else:
+                player = None
+        except AttributeError:
+            # للإصدارات القديمة
+            try:
+                player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+            except Exception:
+                player = None
         
         if not player or not player.is_playing():
             embed = discord.Embed(
@@ -298,7 +310,19 @@ class MusicControls(commands.Cog):
             !volume 75
         """
         # التحقق من وجود تشغيل حالي
-        player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+        try:
+            # استخدام wavelink.nodes بدلاً من NodePool
+            node = wavelink.nodes.get_node()
+            if node:
+                player = node.get_player(ctx.guild.id)
+            else:
+                player = None
+        except AttributeError:
+            # للإصدارات القديمة
+            try:
+                player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+            except Exception:
+                player = None
         
         if not player:
             embed = discord.Embed(
@@ -354,7 +378,19 @@ class MusicControls(commands.Cog):
         تفعيل أو تعطيل وضع تكرار الأغنية الحالية
         """
         # التحقق من وجود تشغيل حالي
-        player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+        try:
+            # استخدام wavelink.nodes بدلاً من NodePool
+            node = wavelink.nodes.get_node()
+            if node:
+                player = node.get_player(ctx.guild.id)
+            else:
+                player = None
+        except AttributeError:
+            # للإصدارات القديمة
+            try:
+                player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+            except Exception:
+                player = None
         
         if not player or not player.is_playing():
             embed = discord.Embed(

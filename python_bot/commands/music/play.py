@@ -220,15 +220,27 @@ class MusicPlayer(commands.Cog):
         
         # الاتصال بالقناة الصوتية
         try:
-            player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-        except Exception as e:
-            if isinstance(e, wavelink.errors.NodeError):
-                return await loading_msg.edit(content="❌ لم يتم الاتصال بخادم الموسيقى. يرجى المحاولة لاحقًا.")
-            
             # محاولة الحصول على مشغل موجود
-            player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+            try:
+                # استخدام wavelink.nodes بدلاً من NodePool
+                node = wavelink.nodes.get_node()
+                if node:
+                    player = node.get_player(ctx.guild.id)
+                else:
+                    # إذا لم يتم العثور على عقدة نشطة
+                    return await loading_msg.edit(content="❌ لم يتم الاتصال بخادم الموسيقى. يرجى المحاولة لاحقًا.")
+            except AttributeError:
+                # للإصدارات القديمة
+                try:
+                    player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+                except Exception:
+                    # في حالة وجود أي خطأ آخر
+                    return await loading_msg.edit(content="❌ حدث خطأ أثناء الاتصال بخادم الموسيقى.")
+                    
             if not player:
-                return await loading_msg.edit(content=f"❌ حدث خطأ: {str(e)}")
+                return await loading_msg.edit(content=f"❌ حدث خطأ: لا يمكن العثور على مشغل الموسيقى.")
+        except Exception as e:
+            return await loading_msg.edit(content=f"❌ حدث خطأ أثناء محاولة تشغيل المحتوى: {str(e)}")
         
         # تخزين قناة النص للإشعارات
         player.text_channel = ctx.channel

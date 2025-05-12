@@ -5,6 +5,9 @@ import discord
 from discord.ext import commands
 import os
 
+# Add import for the ComprehensiveMenuView
+from discord import ui
+
 class Help(commands.Cog):
     """أوامر المساعدة والمعلومات"""
     
@@ -24,6 +27,38 @@ class Help(commands.Cog):
         المعلمات:
             category (str, اختياري): اسم فئة الأوامر المراد عرض معلوماتها
         """
+        # Get the ComprehensiveMenuView from Menu cog if available
+        menu_cog = self.bot.get_cog("Menu")
+        
+        # If category is None and the Menu cog exists with ComprehensiveMenuView, show the interactive menu
+        if category is None and menu_cog:
+            # Try to get the menu class that was previously implemented
+            try:
+                from commands.general.menu import ComprehensiveMenuView
+                
+                # Create embed for the comprehensive menu
+                embed = discord.Embed(
+                    title=f"🤖 مساعدة {self.bot_name}",
+                    description="اختر مباشرة أحد الأزرار أدناه للوصول إلى الأوامر:",
+                    color=discord.Color.blue()
+                )
+                
+                # Add bot avatar if available
+                if self.bot.user.avatar:
+                    embed.set_thumbnail(url=self.bot.user.avatar.url)
+                
+                # Create and show the interactive button menu
+                view = ComprehensiveMenuView(self.bot, ctx)
+                message = await ctx.send(embed=embed, view=view)
+                
+                # Save message reference to the view
+                view.message = message
+                return
+            except (ImportError, AttributeError):
+                # If there's an error importing ComprehensiveMenuView, fall back to text
+                pass
+        
+        # Fall back to text-based help for specific categories or if interactive menu is not available
         prefix = os.getenv("PREFIX", "!")
         
         if category is None:

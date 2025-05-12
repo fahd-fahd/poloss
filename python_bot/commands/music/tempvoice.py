@@ -61,7 +61,20 @@ class MusicControlView(discord.ui.View):
         
         # Disconnect bot if connected
         try:
-            player = wavelink.Pool.get_node().get_player(guild.id)
+            try:
+                # استخدام wavelink.nodes بدلاً من NodePool
+                node = wavelink.nodes.get_node()
+                if node:
+                    player = node.get_player(guild.id)
+                else:
+                    player = None
+            except AttributeError:
+                # للإصدارات القديمة - استخدام Pool
+                try:
+                    player = wavelink.Pool.get_node().get_player(guild.id)
+                except Exception:
+                    player = None
+                
             if player and player.channel and player.channel.id == voice_channel.id:
                 await player.disconnect()
                 
@@ -369,7 +382,20 @@ class TempVoice(commands.Cog):
                 
                 # Disconnect bot if connected
                 try:
-                    player = wavelink.Pool.get_node().get_player(guild.id)
+                    try:
+                        # استخدام wavelink.nodes بدلاً من NodePool
+                        node = wavelink.nodes.get_node()
+                        if node:
+                            player = node.get_player(guild.id)
+                        else:
+                            player = None
+                    except AttributeError:
+                        # للإصدارات القديمة - استخدام Pool
+                        try:
+                            player = wavelink.Pool.get_node().get_player(guild.id)
+                        except Exception:
+                            player = None
+                        
                     if player and player.channel and player.channel.id == channel.id:
                         await player.disconnect()
                         

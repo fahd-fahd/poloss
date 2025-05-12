@@ -454,7 +454,20 @@ class MusicSearch(commands.Cog):
                 return await loading_msg.edit(content="❌ لم يتم العثور على نظام تشغيل الموسيقى.")
             
             # التحقق من وجود تشغيل حالي
-            player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+            try:
+                # استخدام wavelink.nodes بدلاً من NodePool
+                node = wavelink.nodes.get_node()
+                if node:
+                    player = node.get_player(ctx.guild.id)
+                else:
+                    # إذا لم يتم العثور على عقدة نشطة
+                    player = None
+            except AttributeError:
+                # للإصدارات القديمة
+                try:
+                    player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+                except Exception:
+                    player = None
             
             if not player:
                 # إذا لم يكن هناك مشغل، قم باستخدام أمر التشغيل العادي
