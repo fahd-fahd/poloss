@@ -101,6 +101,16 @@ class MusicPlayer(commands.Cog):
                 client=self.bot,
                 nodes=[
                     wavelink.Node(
+                        uri="https://eu-lavalink.lexnet.cc:443",
+                        password="lexn3tl@val!nk",
+                        secure=True
+                    ),
+                    wavelink.Node(
+                        uri="https://lava.link:80",
+                        password="anything as a password",
+                        secure=False
+                    ),
+                    wavelink.Node(
                         uri="https://freelavalink.ga:443",
                         password="www.freelavalink.ga",
                         secure=True
@@ -218,29 +228,53 @@ class MusicPlayer(commands.Cog):
         # رسالة انتظار
         loading_msg = await ctx.send("🔍 جاري تحميل المحتوى...")
         
-        # الاتصال بالقناة الصوتية
+        # الانضمام للقناة الصوتية إذا لم يكن متصلا بها
+        voice_channel = ctx.author.voice.channel
+        
         try:
-            # محاولة الحصول على مشغل موجود
+            # محاولة الاتصال بالقناة الصوتية
             try:
                 # استخدام wavelink.nodes بدلاً من NodePool
                 node = wavelink.nodes.get_node()
-                if node:
+                
+                if not node:
+                    # جرب استخدام wavelink.Pool.get_best_node
+                    try:
+                        node = wavelink.Pool.get_best_node()
+                    except:
+                        # محاولة إعادة الاتصال بالعقد
+                        await self.connect_nodes()
+                        node = wavelink.nodes.get_node()
+                        
+                        if not node:
+                            return await loading_msg.edit(content="❌ لم يتم الاتصال بخادم الموسيقى. يرجى المحاولة لاحقًا.")
+                
+                # التحقق مما إذا كان البوت متصلاً بالفعل بالقناة الصوتية
+                try:
                     player = node.get_player(ctx.guild.id)
-                else:
-                    # إذا لم يتم العثور على عقدة نشطة
-                    return await loading_msg.edit(content="❌ لم يتم الاتصال بخادم الموسيقى. يرجى المحاولة لاحقًا.")
-            except AttributeError:
+                    # إذا كان اللاعب في قناة مختلفة عن قناة المستخدم، اجعله ينتقل
+                    if player and player.channel and player.channel.id != voice_channel.id:
+                        await player.move_to(voice_channel)
+                except:
+                    # لم يتم العثور على لاعب، إنشاء لاعب جديد
+                    try:
+                        player = await voice_channel.connect(cls=wavelink.Player)
+                    except Exception as e:
+                        return await loading_msg.edit(content=f"❌ حدث خطأ أثناء الانضمام للقناة الصوتية: {str(e)}")
+                
+            except AttributeError as e:
+                print(f"Wavelink AttributeError: {e}")
                 # للإصدارات القديمة
                 try:
                     player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
-                except Exception:
+                    if not player:
+                        player = await voice_channel.connect(cls=wavelink.Player)
+                except Exception as e:
                     # في حالة وجود أي خطأ آخر
-                    return await loading_msg.edit(content="❌ حدث خطأ أثناء الاتصال بخادم الموسيقى.")
-                    
-            if not player:
-                return await loading_msg.edit(content=f"❌ حدث خطأ: لا يمكن العثور على مشغل الموسيقى.")
+                    return await loading_msg.edit(content=f"❌ حدث خطأ أثناء الاتصال بخادم الموسيقى: {str(e)}")
+        
         except Exception as e:
-            return await loading_msg.edit(content=f"❌ حدث خطأ أثناء محاولة تشغيل المحتوى: {str(e)}")
+            return await loading_msg.edit(content=f"❌ حدث خطأ عام: {str(e)}")
         
         # تخزين قناة النص للإشعارات
         player.text_channel = ctx.channel
@@ -253,25 +287,64 @@ class MusicPlayer(commands.Cog):
                 # تشغيل من الرابط مباشرة
                 if self._is_youtube_url(query):
                     # إذا كان رابط يوتيوب
-                    tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, query)
+                    try:
+                        tracks = await wavelink.YouTubeTrack.search(query)
+                        if tracks:
+                            track = tracks[0]
+                        else:
+                            return await loading_msg.edit(content="❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.")
+                    except Exception as e:
+                        try:
+                            # محاولة بديلة للحصول على المسار
+                            tracks = await node.get_tracks(wavelink.YouTubeTrack, query)
+                            if tracks:
+                                track = tracks[0]
+                            else:
+                                return await loading_msg.edit(content="❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.")
+                        except Exception as e2:
+                            return await loading_msg.edit(content=f"❌ حدث خطأ أثناء محاولة تحميل المحتوى من يوتيوب: {str(e2)}")
                 else:
                     # أي رابط آخر
-                    tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.Track, query)
+                    try:
+                        # محاولة الحصول على المسارات باستخدام Track
+                        tracks = await wavelink.Track.search(query)
+                        if tracks:
+                            track = tracks[0]
+                        else:
+                            return await loading_msg.edit(content="❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.")
+                    except Exception as e:
+                        try:
+                            # محاولة بديلة للحصول على المسار
+                            tracks = await node.get_tracks(wavelink.Track, query)
+                            if tracks:
+                                track = tracks[0]
+                            else:
+                                return await loading_msg.edit(content="❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.")
+                        except Exception as e2:
+                            return await loading_msg.edit(content=f"❌ حدث خطأ أثناء محاولة تحميل المحتوى: {str(e2)}")
                 
-                if not tracks:
-                    return await loading_msg.edit(content="❌ لم يتم العثور على محتوى صالح للتشغيل في الرابط المحدد.")
-                
-                track = tracks[0]
                 thumbnail_id = self._extract_youtube_id(query) if self._is_youtube_url(query) else None
             else:
                 # البحث في يوتيوب
                 search_query = f"ytsearch:{query}"
-                tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, search_query)
+                try:
+                    # محاولة البحث عن المسارات
+                    tracks = await wavelink.YouTubeTrack.search(query)
+                    if tracks:
+                        track = tracks[0]
+                    else:
+                        return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
+                except Exception as e:
+                    try:
+                        # محاولة بديلة للبحث
+                        tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
+                        if tracks:
+                            track = tracks[0]
+                        else:
+                            return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
+                    except Exception as e2:
+                        return await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e2)}")
                 
-                if not tracks:
-                    return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
-                
-                track = tracks[0]
                 thumbnail_id = track.identifier
             
             # تعيين مطلوب المحتوى

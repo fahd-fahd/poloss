@@ -127,86 +127,117 @@ class SearchResultsView(View):
     async def _play_track(self, interaction, track, show_message=True):
         """تشغيل المسار المحدد"""
         try:
-            # الاتصال بالقناة الصوتية
-            player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
-        except Exception as e:
-            if isinstance(e, wavelink.errors.NodeError):
+            # التحقق من وجود المستخدم في قناة صوتية
+            if not interaction.user.voice:
                 if show_message:
-                    await interaction.response.send_message("❌ لم يتم الاتصال بخادم الموسيقى. يرجى المحاولة لاحقًا.", ephemeral=True)
+                    await interaction.response.send_message("❌ يجب أن تكون في قناة صوتية للتشغيل.", ephemeral=True)
                 return False
+            
+            voice_channel = interaction.user.voice.channel
             
             try:
-                # محاولة الحصول على مشغل موجود
+                # محاولة الاتصال بالقناة الصوتية
                 try:
-                    # استخدام wavelink.nodes بدلاً من NodePool
                     node = wavelink.nodes.get_node()
-                    player = node.get_player(interaction.guild.id)
-                except AttributeError:
-                    # للإصدارات القديمة
+                    if not node:
+                        try:
+                            node = wavelink.Pool.get_best_node()
+                        except:
+                            # إذا لم نتمكن من الحصول على عقدة، نحاول الاتصال المباشر
+                            player = await voice_channel.connect(cls=wavelink.Player)
+                            player.text_channel = interaction.channel
+                            return player
+                    
+                    # البحث عن لاعب موجود
                     try:
-                        player = wavelink.players.get_player(guild_id=interaction.guild.id)
-                    except Exception:
-                        player = None
-                
-                if not player:
-                    if show_message:
-                        await interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
-                    return False
+                        player = node.get_player(interaction.guild.id)
+                        # إذا كان اللاعب موجودًا ولكنه في قناة مختلفة، ننقله
+                        if player and player.channel and player.channel.id != voice_channel.id:
+                            await player.move_to(voice_channel)
+                        elif not player:
+                            # إنشاء لاعب جديد
+                            player = await voice_channel.connect(cls=wavelink.Player)
+                    except Exception as e:
+                        # إنشاء لاعب جديد في حالة أي خطأ
+                        player = await voice_channel.connect(cls=wavelink.Player)
+                except Exception as e:
+                    # إذا فشلت المحاولة الأولى، جرب أسلوب آخر
+                    try:
+                        player = wavelink.NodePool.get_node().get_player(interaction.guild.id)
+                        if not player:
+                            player = await voice_channel.connect(cls=wavelink.Player)
+                    except Exception as e2:
+                        if show_message:
+                            await interaction.followup.send(f"❌ حدث خطأ أثناء محاولة الاتصال بالقناة الصوتية: {str(e2)}", ephemeral=True)
+                        return False
             except Exception as e:
                 if show_message:
-                    await interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+                    await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
                 return False
         
-        # تخزين قناة النص للإشعارات
-        player.text_channel = interaction.channel
-        
-        # الحصول على مرجع لنظام تشغيل الموسيقى
-        music_cog = self.bot.get_cog("MusicPlayer")
-        
-        # إضافة الأغنية إلى قائمة الانتظار أو تشغيلها فورًا
-        if player.is_playing():
-            # إضافة الأغنية إلى قائمة الانتظار
-            if music_cog:
-                if interaction.guild.id not in music_cog.song_queue:
-                    music_cog.song_queue[interaction.guild.id] = []
-                
-                music_cog.song_queue[interaction.guild.id].append(track)
+            # تخزين قناة النص للإشعارات
+            player.text_channel = interaction.channel
             
+            # الحصول على مرجع لنظام تشغيل الموسيقى
+            music_cog = self.bot.get_cog("MusicPlayer")
+            
+            # إضافة الأغنية إلى قائمة الانتظار أو تشغيلها فورًا
+            if player.is_playing():
+                # إضافة الأغنية إلى قائمة الانتظار
+                if music_cog:
+                    if interaction.guild.id not in music_cog.song_queue:
+                        music_cog.song_queue[interaction.guild.id] = []
+                    
+                    music_cog.song_queue[interaction.guild.id].append(track)
+                
+                if show_message:
+                    embed = discord.Embed(
+                        title="🎵 تمت إضافة الأغنية إلى قائمة الانتظار",
+                        description=f"**{track.title}**",
+                        color=discord.Color.green()
+                    )
+                    embed.add_field(name="المدة", value=self._format_duration(track.duration), inline=True)
+                    
+                    position = len(music_cog.song_queue[interaction.guild.id]) if music_cog else 1
+                    embed.add_field(name="الموقع في القائمة", value=f"#{position}", inline=True)
+                    
+                    if hasattr(track, 'identifier'):
+                        embed.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/maxresdefault.jpg")
+                    
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                # تشغيل الأغنية مباشرة
+                try:
+                    await player.play(track)
+                    
+                    if music_cog:
+                        music_cog.now_playing[interaction.guild.id] = track
+                    
+                    if show_message:
+                        embed = discord.Embed(
+                            title="🎵 بدأ تشغيل",
+                            description=f"**{track.title}**",
+                            color=discord.Color.blue()
+                        )
+                        embed.add_field(name="المدة", value=self._format_duration(track.duration), inline=True)
+                        
+                        if hasattr(track, 'identifier'):
+                            embed.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/maxresdefault.jpg")
+                        
+                        await interaction.followup.send(embed=embed, ephemeral=True)
+                except Exception as e:
+                    if show_message:
+                        await interaction.followup.send(f"❌ حدث خطأ أثناء تشغيل المسار: {str(e)}", ephemeral=True)
+                    return False
+            
+            # إيقاف عرض الأزرار
+            self.stop()
+            return True
+        except Exception as e:
             if show_message:
-                embed = discord.Embed(
-                    title="🎵 تمت إضافة الأغنية إلى قائمة الانتظار",
-                    description=f"**{track.title}**",
-                    color=discord.Color.green()
-                )
-                embed.add_field(name="المدة", value=self._format_duration(track.duration), inline=True)
-                
-                position = len(music_cog.song_queue[interaction.guild.id]) if music_cog else 1
-                embed.add_field(name="الموقع في القائمة", value=f"#{position}", inline=True)
-                
-                embed.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/maxresdefault.jpg")
-                
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            # تشغيل الأغنية مباشرة
-            await player.play(track)
-            
-            if music_cog:
-                music_cog.now_playing[interaction.guild.id] = track
-            
-            if show_message:
-                embed = discord.Embed(
-                    title="🎵 بدأ تشغيل",
-                    description=f"**{track.title}**",
-                    color=discord.Color.blue()
-                )
-                embed.add_field(name="المدة", value=self._format_duration(track.duration), inline=True)
-                embed.set_thumbnail(url=f"https://img.youtube.com/vi/{track.identifier}/maxresdefault.jpg")
-                
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-        # إيقاف عرض الأزرار
-        self.stop()
-        return True
+                await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
+            print(f"خطأ في تشغيل المسار: {str(e)}")
+            return False
     
     def _format_duration(self, milliseconds):
         """تنسيق المدة من مللي ثانية إلى صيغة دقائق:ثواني"""
@@ -267,19 +298,8 @@ class MusicSearch(commands.Cog):
                         return await loading_msg.edit(content="❌ يجب أن تكون في قناة صوتية لاستخدام هذا الأمر.")
                     
                     try:
-                        # البحث عن الأغاني في YouTube
-                        search_query = f"ytsearch5:{self.search_query.value}"  # البحث عن 5 نتائج فقط
-                        
-                        try:
-                            # محاولة استخدام nodes.get_node
-                            node = wavelink.nodes.get_node()
-                            tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-                        except (AttributeError, TypeError):
-                            # إذا فشلت المحاولة الأولى، استخدم الطريقة القديمة
-                            try:
-                                tracks = await wavelink.YouTubeTrack.search(self.search_query.value, return_first=False)
-                            except Exception as e:
-                                return await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
+                        # البحث عن الأغاني في YouTube بطرق متعددة
+                        tracks = await self.search_with_fallback(self.search_query.value)
                         
                         if not tracks:
                             return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
@@ -293,9 +313,10 @@ class MusicSearch(commands.Cog):
                         
                         # إضافة النتائج
                         for i, track in enumerate(tracks, 1):
+                            duration = self._format_duration(track.duration) if hasattr(track, 'duration') else "غير معروف"
                             embed.add_field(
                                 name=f"{i}. {track.title}",
-                                value=f"المدة: {self._format_duration(track.duration)}",
+                                value=f"المدة: {duration}",
                                 inline=False
                             )
                         
@@ -307,6 +328,51 @@ class MusicSearch(commands.Cog):
                     except Exception as e:
                         await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
                         print(f"خطأ في أمر البحث: {str(e)}")
+                    
+                async def search_with_fallback(self, query):
+                    """البحث مع التحقق من عدة مصادر بديلة"""
+                    search_methods = [
+                        # الطريقة 1: استخدام YouTubeTrack.search
+                        lambda: wavelink.YouTubeTrack.search(query, return_first=False),
+                        
+                        # الطريقة 2: استخدام ytsearch باستخدام nodes.get_node
+                        lambda: (wavelink.nodes.get_node() or wavelink.Pool.get_best_node()).get_tracks(
+                            wavelink.YouTubeTrack, f"ytsearch5:{query}"
+                        ),
+                        
+                        # الطريقة 3: استخدام NodePool (الإصدار القديم)
+                        lambda: wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, f"ytsearch5:{query}"),
+                    ]
+                    
+                    # محاولة البحث بطرق متعددة حتى نجاح واحدة
+                    for method in search_methods:
+                        try:
+                            tracks = await method()
+                            if tracks and len(tracks) > 0:
+                                # تقييد النتائج لـ 5 فقط
+                                return tracks[:5]
+                        except Exception as e:
+                            print(f"فشل طريقة البحث: {str(e)}")
+                            continue
+                    
+                    # إذا فشلت جميع الطرق، حاول طريقة يدوية
+                    try:
+                        # جرب الطلب المباشر من الـ API
+                        node = wavelink.nodes.get_node() or wavelink.Pool.get_best_node()
+                        if node:
+                            raw_tracks = await node.send({"op": "loadtracks", "identifier": f"ytsearch:{query}"})
+                            if raw_tracks and "tracks" in raw_tracks and len(raw_tracks["tracks"]) > 0:
+                                # تحويل البيانات الخام إلى مسارات
+                                tracks = []
+                                for t in raw_tracks["tracks"][:5]:
+                                    track = wavelink.YouTubeTrack(t["info"], requester=None)
+                                    tracks.append(track)
+                                return tracks
+                    except Exception as e:
+                        print(f"فشل طريقة البحث اليدوية: {str(e)}")
+                    
+                    # إذا وصلنا إلى هنا، لم نتمكن من العثور على نتائج
+                    return []
                 
                 def _format_duration(self, milliseconds):
                     """تنسيق المدة من مللي ثانية إلى صيغة دقائق:ثواني"""
@@ -350,22 +416,36 @@ class MusicSearch(commands.Cog):
         loading_msg = await ctx.send("🔍 جاري البحث في YouTube...")
         
         try:
-            # البحث عن الأغاني في YouTube
-            search_query = f"ytsearch5:{query}"  # البحث عن 5 نتائج فقط
-            
+            # البحث عن الأغاني في YouTube بطرق متعددة
             try:
-                # محاولة استخدام nodes.get_node
-                node = wavelink.nodes.get_node()
-                tracks = await node.get_tracks(wavelink.YouTubeTrack, search_query)
-            except (AttributeError, TypeError):
-                # إذا فشلت المحاولة الأولى، استخدم الطريقة القديمة
+                # الطريقة 1: استخدام YouTubeTrack.search
+                tracks = await wavelink.YouTubeTrack.search(query, return_first=False)
+                if not tracks or len(tracks) == 0:
+                    raise Exception("لم يتم العثور على نتائج")
+            except Exception as e1:
+                print(f"فشل البحث بالطريقة 1: {str(e1)}")
                 try:
-                    tracks = await wavelink.YouTubeTrack.search(query, return_first=False)
-                except Exception as e:
-                    return await loading_msg.edit(content=f"❌ حدث خطأ أثناء البحث: {str(e)}")
+                    # الطريقة 2: استخدام ytsearch مع nodes.get_node
+                    node = wavelink.nodes.get_node() or wavelink.Pool.get_best_node()
+                    if node:
+                        tracks = await node.get_tracks(wavelink.YouTubeTrack, f"ytsearch5:{query}")
+                        if not tracks or len(tracks) == 0:
+                            raise Exception("لم يتم العثور على نتائج")
+                    else:
+                        raise Exception("لا يوجد node متاح")
+                except Exception as e2:
+                    print(f"فشل البحث بالطريقة 2: {str(e2)}")
+                    try:
+                        # الطريقة 3: استخدام NodePool (الإصدار القديم)
+                        tracks = await wavelink.NodePool.get_node().get_tracks(wavelink.YouTubeTrack, f"ytsearch5:{query}")
+                        if not tracks or len(tracks) == 0:
+                            raise Exception("لم يتم العثور على نتائج")
+                    except Exception as e3:
+                        print(f"فشل البحث بالطريقة 3: {str(e3)}")
+                        return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث أو حدث خطأ في الاتصال بخادم البحث.")
             
-            if not tracks:
-                return await loading_msg.edit(content="❌ لم يتم العثور على نتائج للبحث.")
+            # تقييد النتائج لـ 5 فقط
+            tracks = tracks[:5]
             
             # إنشاء رسالة مضمنة مع نتائج البحث
             embed = discord.Embed(
@@ -376,11 +456,16 @@ class MusicSearch(commands.Cog):
             
             # إضافة النتائج
             for i, track in enumerate(tracks, 1):
+                duration = self._format_duration(track.duration) if hasattr(track, 'duration') else "غير معروف"
                 embed.add_field(
                     name=f"{i}. {track.title}",
-                    value=f"المدة: {self._format_duration(track.duration)}",
+                    value=f"المدة: {duration}",
                     inline=False
                 )
+            
+            # إضافة الصورة المصغرة للنتيجة الأولى إذا كانت من يوتيوب
+            if tracks and hasattr(tracks[0], 'identifier'):
+                embed.set_thumbnail(url=f"https://img.youtube.com/vi/{tracks[0].identifier}/hqdefault.jpg")
             
             # إنشاء واجهة التفاعل
             view = SearchResultsView(self.bot, ctx, tracks)

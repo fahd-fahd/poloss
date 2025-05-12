@@ -59,7 +59,8 @@ class EnhancedGamesView(ui.View):
         fishing_stages = [
             "🌊 أنت تلقي بصنارتك في المحيط الأزرق...",
             "🌊 الماء يتحرك... شيء ما يقترب! 👀",
-            "🌊 سمكة كبيرة تسبح بالقرب من الصنارة! 🐟"
+            "🌊 سمكة كبيرة تسبح بالقرب من الصنارة! 🐟",
+            "🌊 تشعر بشد قوي على الصنارة...! 🎣"
         ]
         
         for stage in fishing_stages:
@@ -72,7 +73,10 @@ class EnhancedGamesView(ui.View):
             {"name": "سمكة عادية", "value": 50, "chance": 0.5, "emoji": "🐟"},
             {"name": "سمكة نادرة", "value": 150, "chance": 0.3, "emoji": "🐠"},
             {"name": "سمكة نادرة جداً", "value": 500, "chance": 0.15, "emoji": "🦑"},
-            {"name": "كنز", "value": 1000, "chance": 0.05, "emoji": "💎"}
+            {"name": "كنز", "value": 1000, "chance": 0.05, "emoji": "💎"},
+            {"name": "سمكة ذهبية", "value": 2000, "chance": 0.03, "emoji": "🐡"},
+            {"name": "وحش بحري", "value": 3000, "chance": 0.01, "emoji": "🐙"},
+            {"name": "تاج ملكي", "value": 5000, "chance": 0.005, "emoji": "👑"}
         ]
         
         # إضافة الرموز التعبيرية إذا لم تكن موجودة
@@ -86,8 +90,12 @@ class EnhancedGamesView(ui.View):
                     item["emoji"] = "🦑"
                 elif "كنز" in item["name"]:
                     item["emoji"] = "💎"
-                else:
+                elif "ذهبية" in item["name"]:
                     item["emoji"] = "🐡"
+                elif "وحش" in item["name"]:
+                    item["emoji"] = "🐙"
+                else:
+                    item["emoji"] = "🎣"
         
         # اختيار عنصر بناءً على قيم الفرص
         weights = [item["chance"] for item in fishing_items]
@@ -98,14 +106,31 @@ class EnhancedGamesView(ui.View):
         embed.description = f"**{caught_item['emoji']} لقد اصطدت {caught_item['name']}!**\n\nقيمتها: **{caught_item['value']}** {self.bot.config.get('bank', {}).get('currencyEmoji', '💰')}"
         embed.color = discord.Color.gold()
         
+        # إضافة تأثيرات إضافية بناءً على قيمة العنصر المصطاد
+        if caught_item["value"] >= 1000:
+            embed.description += "\n\n🎉 **مبارك!** لقد اصطدت عنصراً نادراً!"
+            
+        if caught_item["value"] >= 3000:
+            embed.description += "\n🔥 **رائع جداً!** هذا نادر حقاً!"
+            
+        # إظهار فرصة الصيد
+        chance_percentage = caught_item["chance"] * 100
+        if chance_percentage < 1:
+            chance_text = f"{chance_percentage:.2f}%"
+        else:
+            chance_text = f"{chance_percentage:.0f}%"
+            
+        embed.add_field(name="فرصة الصيد", value=f"{chance_text}", inline=True)
+        
         # إضافة التذييل
-        embed.set_footer(text="يمكنك استخدام اللعبة مرة أخرى بعد 5 دقائق")
+        cooldown_minutes = 5  # فترة الانتظار الافتراضية
+        embed.set_footer(text=f"يمكنك استخدام اللعبة مرة أخرى بعد {cooldown_minutes} دقائق")
         
         await fishing_message.edit(embed=embed)
         
         # تعيين فترة الانتظار (5 دقائق)
         if hasattr(fishing_cog, 'cooldowns'):
-            fishing_cog.cooldowns[user_id] = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+            fishing_cog.cooldowns[user_id] = datetime.datetime.utcnow() + datetime.timedelta(minutes=cooldown_minutes)
         
         # إضافة العملات إلى رصيد المستخدم
         try:
@@ -145,7 +170,7 @@ class EnhancedGamesView(ui.View):
             
             bet_amount = ui.TextInput(
                 label="المبلغ",
-                placeholder="مثال: 100",
+                placeholder="مثال: 100 أو كل",
                 required=True
             )
             
@@ -153,6 +178,43 @@ class EnhancedGamesView(ui.View):
                 # التحقق من صحة المدخلات
                 try:
                     amount = self.bet_amount.value.lower()
+                    
+                    # الحصول على رصيد المستخدم
+                    user_id = dice_interaction.user.id
+                    user_balance = 1000  # قيمة افتراضية
+                    
+                    try:
+                        if hasattr(self.view.bot, 'db'):
+                            user_doc = await self.view.bot.db.users.find_one({"user_id": user_id})
+                            if user_doc:
+                                user_balance = user_doc.get("balance", 1000)
+                    except Exception as e:
+                        print(f"خطأ في الحصول على رصيد المستخدم: {str(e)}")
+                    
+                    # معالجة مبلغ الرهان
+                    if amount == "كل" or amount == "all":
+                        bet_amount = user_balance
+                    else:
+                        try:
+                            bet_amount = int(amount)
+                        except ValueError:
+                            return await dice_interaction.response.send_message(
+                                "❌ المبلغ غير صحيح. يجب أن يكون رقماً أو 'كل'.",
+                                ephemeral=True
+                            )
+                    
+                    # التحقق من الرصيد
+                    if bet_amount <= 0:
+                        return await dice_interaction.response.send_message(
+                            "❌ يجب أن يكون المبلغ أكبر من صفر.",
+                            ephemeral=True
+                        )
+                    
+                    if bet_amount > user_balance:
+                        return await dice_interaction.response.send_message(
+                            f"❌ ليس لديك رصيد كافٍ. رصيدك الحالي: {user_balance}",
+                            ephemeral=True
+                        )
                     
                     # التحقق من نوع الرهان
                     choice = self.bet_type.value.lower()
@@ -162,14 +224,18 @@ class EnhancedGamesView(ui.View):
                         bet_type = "high"
                         bet_name = "الأرقام العالية (4-6)"
                         valid_choice = True
+                        win_range = [4, 5, 6]
                     elif choice in ["منخفض", "low", "l", "منخفض"]:
                         bet_type = "low"
                         bet_name = "الأرقام المنخفضة (1-3)"
                         valid_choice = True
+                        win_range = [1, 2, 3]
                     elif choice.isdigit() and 1 <= int(choice) <= 6:
                         bet_type = "number"
+                        bet_number = int(choice)
                         bet_name = f"الرقم {choice}"
                         valid_choice = True
+                        win_range = [bet_number]
                     
                     if not valid_choice:
                         return await dice_interaction.response.send_message(
@@ -177,24 +243,83 @@ class EnhancedGamesView(ui.View):
                             ephemeral=True
                         )
                     
-                    # تنفيذ أمر النرد مع المعلمات المدخلة
-                    dice_command = self.view.bot.get_command('نرد')
-                    if dice_command:
-                        ctx = await self.view.bot.get_context(self.view.ctx.message)
-                        await dice_interaction.response.defer()
-                        await ctx.invoke(dice_command, choice=choice, amount=amount)
+                    # بدء لعبة النرد
+                    await dice_interaction.response.defer(ephemeral=False)
+                    
+                    # إنشاء رسالة مضمنة للعبة
+                    embed = discord.Embed(
+                        title="🎲 لعبة النرد",
+                        description=f"{dice_interaction.user.mention} راهن على **{bet_name}** بمبلغ **{bet_amount}**",
+                        color=discord.Color.blue()
+                    )
+                    
+                    # عرض الرسالة الأولية
+                    dice_message = await dice_interaction.followup.send(embed=embed)
+                    
+                    # تقليب النرد (تأثير بصري)
+                    for i in range(3):
+                        embed.description = f"{dice_interaction.user.mention} راهن على **{bet_name}** بمبلغ **{bet_amount}**\n\n🎲 النرد يتقلب..."
+                        await dice_message.edit(embed=embed)
+                        await asyncio.sleep(1)
+                    
+                    # تحديد نتيجة النرد
+                    dice_result = random.randint(1, 6)
+                    dice_emoji = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][dice_result - 1]
+                    
+                    # تحديد النتيجة
+                    win = dice_result in win_range
+                    
+                    # حساب المكسب/الخسارة
+                    if bet_type == "number":
+                        # الرهان على رقم محدد يعطي مكافأة أكبر (5 أضعاف)
+                        win_amount = bet_amount * 5 if win else -bet_amount
                     else:
-                        await dice_interaction.response.send_message("❌ عذراً، أمر النرد غير متاح حالياً.", ephemeral=True)
-                
+                        # الرهان على عالي/منخفض يعطي ضعف المبلغ
+                        win_amount = bet_amount if win else -bet_amount
+                    
+                    # تحديث الرصيد
+                    try:
+                        if hasattr(self.view.bot, 'db'):
+                            await self.view.bot.db.users.update_one(
+                                {"user_id": user_id},
+                                {"$inc": {"balance": win_amount}},
+                                upsert=True
+                            )
+                    except Exception as e:
+                        print(f"خطأ في تحديث رصيد المستخدم: {str(e)}")
+                    
+                    # عرض النتيجة
+                    if win:
+                        embed.title = "🎲 لقد ربحت! 🎉"
+                        embed.color = discord.Color.green()
+                        embed.description = f"{dice_interaction.user.mention} راهن على **{bet_name}** بمبلغ **{bet_amount}** وربح **{abs(win_amount)}**!"
+                    else:
+                        embed.title = "🎲 للأسف خسرت!"
+                        embed.color = discord.Color.red()
+                        embed.description = f"{dice_interaction.user.mention} راهن على **{bet_name}** بمبلغ **{bet_amount}** وخسر!"
+                    
+                    # إضافة معلومات النرد
+                    embed.add_field(name="نتيجة النرد", value=f"{dice_emoji} **{dice_result}**", inline=True)
+                    
+                    # إضافة الرصيد الجديد
+                    try:
+                        new_balance = user_balance + win_amount
+                        embed.add_field(name="رصيدك الجديد", value=f"**{new_balance}**", inline=True)
+                    except:
+                        pass
+                    
+                    # تحديث الرسالة
+                    await dice_message.edit(embed=embed)
+                    
                 except Exception as e:
-                    await dice_interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+                    await dice_interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
         
         # عرض المودال
         modal = DiceModal()
         modal.view = self
         await interaction.response.send_modal(modal)
     
-    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="🏇", row=0)
+    @ui.button(label="🏇 سباق الخيول", style=discord.ButtonStyle.primary, emoji="��", row=0)
     async def horserace_game_button(self, interaction: discord.Interaction, button: ui.Button):
         """زر لعبة سباق الخيول"""
         if interaction.user.id != self.ctx.author.id:

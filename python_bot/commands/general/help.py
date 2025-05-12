@@ -27,12 +27,8 @@ class Help(commands.Cog):
         المعلمات:
             category (str, اختياري): اسم فئة الأوامر المراد عرض معلوماتها
         """
-        # Get the ComprehensiveMenuView from Menu cog if available
-        menu_cog = self.bot.get_cog("Menu")
-        
-        # If category is None and the Menu cog exists with ComprehensiveMenuView, show the interactive menu
-        if category is None and menu_cog:
-            # Try to get the menu class that was previously implemented
+        # If category is None, always show the interactive menu
+        if category is None:
             try:
                 from commands.general.menu import ComprehensiveMenuView
                 
@@ -54,9 +50,9 @@ class Help(commands.Cog):
                 # Save message reference to the view
                 view.message = message
                 return
-            except (ImportError, AttributeError):
-                # If there's an error importing ComprehensiveMenuView, fall back to text
-                pass
+            except (ImportError, AttributeError) as e:
+                # If there's an error importing ComprehensiveMenuView, log it and fall back to text
+                print(f"Error displaying interactive menu: {str(e)}")
         
         # Fall back to text-based help for specific categories or if interactive menu is not available
         prefix = os.getenv("PREFIX", "!")

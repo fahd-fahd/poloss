@@ -272,23 +272,23 @@ class TempVoice(commands.Cog):
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        """يتم استدعاؤها عند تغيير حالة الصوت للعضو"""
-        # Skip bot voice state updates
+        """معالجة تحديثات حالة الصوت للأعضاء (الانضمام/المغادرة)"""
+        # تجاهل تحديثات البوت نفسه
         if member.bot:
             return
         
-        # Handle channel creation
-        if after.channel and after.channel.name == self.create_channel_name:
+        # تحقق ما إذا كان العضو قد انضم إلى قناة إنشاء الغرف
+        if after.channel and self.create_channel_ids and after.channel.id in self.create_channel_ids:
             await self._create_temp_channel(member, after.channel)
-        
-        # Handle channel deletion
-        if before.channel and not after.channel:
-            # Check if this is a game channel
-            if before.channel.id in self.game_channels:
-                # Don't delete game channels when empty
-                return
             
-            await self._check_empty_channel(before.channel)
+        # تحقق ما إذا كانت قناة صوتية مؤقتة أصبحت فارغة
+        if before.channel and str(before.channel.id) in self.temp_channels:
+            # احصل على معلومات القناة
+            channel_info = self.temp_channels[str(before.channel.id)]
+            
+            # تحقق مما إذا كان يجب فحص القناة
+            if not channel_info.get("game_mode", False):  # تجاهل الغرف في وضع الألعاب
+                await self._check_empty_channel(before.channel)
     
     async def _create_temp_channel(self, member: discord.Member, create_channel: discord.VoiceChannel):
         """إنشاء غرفة صوتية مؤقتة"""
@@ -366,67 +366,99 @@ class TempVoice(commands.Cog):
                 await member.move_to(create_channel)
     
     async def _check_empty_channel(self, channel: discord.VoiceChannel):
-        """التحقق من الغرفة الصوتية إذا كانت فارغة"""
-        # Wait a moment to ensure the channel is actually empty
-        await asyncio.sleep(1)
+        """التحقق مما إذا كانت القناة فارغة وإزالتها إذا لزم الأمر"""
+        await asyncio.sleep(0.5)  # انتظر لحظة للتأكد من استقرار الحالة
         
-        guild = channel.guild
+        # قم بتحديث عدد الأعضاء في القناة
+        try:
+            channel = self.bot.get_channel(channel.id)
+            if not channel:
+                return  # لا يمكن العثور على القناة
+        except:
+            return  # حدث خطأ أثناء البحث عن القناة
         
-        # Check if this is a temporary channel
-        if guild.id in self.temp_channels and channel.id in self.temp_channels[guild.id]:
-            # Check if the channel is empty (no non-bot members)
-            if not any(not member.bot for member in channel.members):
-                # Get associated text channel
-                text_channel_id = self.temp_channels[guild.id][channel.id]
-                text_channel = guild.get_channel(text_channel_id)
-                
+        # تحقق مما إذا كانت القناة فارغة (باستثناء البوتات)
+        human_members = [m for m in channel.members if not m.bot]
+        
+        if not human_members:
+            # القناة فارغة تمامًا من الأعضاء البشريين
+            try:
                 # Disconnect bot if connected
                 try:
+                    # استخدام wavelink.nodes بدلاً من NodePool
+                    guild = channel.guild
+                    
                     try:
-                        # استخدام wavelink.nodes بدلاً من NodePool
+                        # الطريقة 1: استخدام nodes.get_node
                         node = wavelink.nodes.get_node()
                         if node:
                             player = node.get_player(guild.id)
                         else:
                             player = None
-                    except AttributeError:
-                        # للإصدارات القديمة - استخدام Pool
+                    except (AttributeError, Exception):
+                        # الطريقة 2: استخدام Pool.get_best_node
                         try:
-                            player = wavelink.Pool.get_node().get_player(guild.id)
-                        except Exception:
-                            player = None
-                        
+                            node = wavelink.Pool.get_best_node()
+                            if node:
+                                player = node.get_player(guild.id)
+                            else:
+                                player = None
+                        except (AttributeError, Exception):
+                            # الطريقة 3: استخدام NodePool (إصدار قديم)
+                            try:
+                                player = wavelink.NodePool.get_node().get_player(guild.id)
+                            except Exception:
+                                player = None
+                    
                     if player and player.channel and player.channel.id == channel.id:
                         await player.disconnect()
                         
                         # Clean up queue and now playing
-                        if guild.id in self.song_queue:
-                            self.song_queue[guild.id] = []
-                        
-                        if guild.id in self.now_playing:
-                            del self.now_playing[guild.id]
+                        music_cog = self.bot.get_cog("MusicPlayer")
+                        if music_cog:
+                            if guild.id in music_cog.song_queue:
+                                music_cog.song_queue[guild.id] = []
+                            if guild.id in music_cog.now_playing:
+                                del music_cog.now_playing[guild.id]
                 except Exception as e:
-                    logger.error(f"Error disconnecting player: {str(e)}")
+                    print(f"Error disconnecting player: {e}")
                 
-                # Delete channels
+                # حذف رسالة التحكم المرتبطة بهذه القناة إذا وجدت
                 try:
-                    if text_channel:
-                        await text_channel.delete(reason="الغرفة الصوتية المؤقتة أصبحت فارغة")
-                    
-                    await channel.delete(reason="الغرفة الصوتية المؤقتة أصبحت فارغة")
-                    
-                    # Remove from tracking
-                    del self.temp_channels[guild.id][channel.id]
-                    if not self.temp_channels[guild.id]:
-                        del self.temp_channels[guild.id]
-                    
-                    # Remove from channel creators
-                    if guild.id in self.channel_creators and channel.id in self.channel_creators[guild.id]:
-                        del self.channel_creators[guild.id][channel.id]
-                    
-                    logger.info(f"Deleted empty temporary voice channel in {guild.name}")
+                    # استرجاع معلومات القناة
+                    if str(channel.id) in self.temp_channels:
+                        channel_info = self.temp_channels[str(channel.id)]
+                        # حذف رسالة التحكم إذا كانت موجودة
+                        if "control_message" in channel_info and channel_info["control_message"]:
+                            try:
+                                text_channel_id = channel_info["text_channel"]
+                                control_message_id = channel_info["control_message"]
+                                
+                                # جلب قناة النص
+                                text_channel = self.bot.get_channel(int(text_channel_id))
+                                if text_channel:
+                                    try:
+                                        # جلب الرسالة
+                                        control_message = await text_channel.fetch_message(int(control_message_id))
+                                        await control_message.delete()
+                                    except Exception as e:
+                                        print(f"Error deleting control message: {e}")
+                            except Exception as e:
+                                print(f"Error handling control message: {e}")
                 except Exception as e:
-                    logger.error(f"Error deleting temporary channels: {str(e)}")
+                    print(f"Error with control message handling: {e}")
+                
+                # حذف القناة
+                await channel.delete(reason="الغرفة المؤقتة أصبحت فارغة")
+                
+                # حذف معلومات القناة من القاموس
+                if str(channel.id) in self.temp_channels:
+                    del self.temp_channels[str(channel.id)]
+                    
+                # حفظ التحديثات في قاعدة البيانات
+                self._save_channels()
+            except Exception as e:
+                print(f"Error deleting temp channel: {e}")
     
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, player: wavelink.Player, track, reason):
@@ -517,54 +549,83 @@ class TempVoice(commands.Cog):
             await ctx.send(f"❌ حدث خطأ أثناء إنشاء القناة: {str(e)}")
     
     @commands.command(
-        name="h",
-        aliases=["game", "لعبة", "العاب"],
+        name="غرفة_ألعاب",
+        aliases=["game", "لعبة", "العاب", "g"],
         description="تحويل الغرفة الصوتية إلى غرفة ألعاب (لا تغلق تلقائيًا)"
     )
     async def game_mode(self, ctx):
-        """تحويل الغرفة الصوتية إلى غرفة ألعاب (لا تغلق تلقائيًا)"""
-        # Check if user is in a voice channel
+        """
+        تحويل الغرفة الصوتية الحالية إلى غرفة ألعاب (لا تغلق تلقائيًا عند فراغها)
+        """
+        # التحقق من وجود المستخدم في قناة صوتية
         if not ctx.author.voice or not ctx.author.voice.channel:
-            await ctx.send("❌ يجب أن تكون متصلاً بغرفة صوتية لاستخدام هذا الأمر.")
-            return
+            embed = discord.Embed(
+                title="❌ خطأ",
+                description="يجب أن تكون متواجدًا في غرفة صوتية لاستخدام هذا الأمر.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
         
         voice_channel = ctx.author.voice.channel
-        guild_id = ctx.guild.id
         
-        # Check if this is a temporary channel
-        is_temp_channel = False
-        if guild_id in self.temp_channels and voice_channel.id in self.temp_channels[guild_id]:
-            is_temp_channel = True
+        # التحقق مما إذا كانت الغرفة من إنشاء النظام
+        is_temp_channel = str(voice_channel.id) in self.temp_channels
         
         if not is_temp_channel:
-            await ctx.send("❌ هذا الأمر متاح فقط في الغرف الصوتية المؤقتة.")
-            return
+            embed = discord.Embed(
+                title="❌ خطأ",
+                description="هذه ليست غرفة مؤقتة تم إنشاؤها بواسطة النظام.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
         
-        # Check if user is the creator or has manage channels permission
-        is_creator = False
-        if guild_id in self.channel_creators and voice_channel.id in self.channel_creators[guild_id]:
-            creator_id = self.channel_creators[guild_id][voice_channel.id]
-            is_creator = (creator_id == ctx.author.id)
+        # التحقق مما إذا كان المستخدم هو صاحب الغرفة
+        channel_info = self.temp_channels[str(voice_channel.id)]
         
-        if not (is_creator or ctx.author.guild_permissions.manage_channels):
-            await ctx.send("❌ يجب أن تكون منشئ الغرفة أو تملك صلاحيات إدارة القنوات لاستخدام هذا الأمر.")
-            return
+        if not (ctx.author.id == channel_info.get("owner_id") or ctx.author.guild_permissions.administrator):
+            embed = discord.Embed(
+                title="❌ غير مصرح",
+                description="يجب أن تكون أنت صاحب الغرفة أو مشرف لتنفيذ هذا الأمر.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
         
-        # Add to game channels
-        self.game_channels.add(voice_channel.id)
+        # تفعيل/تعطيل وضع الألعاب
+        current_mode = channel_info.get("game_mode", False)
+        new_mode = not current_mode
         
-        # Send confirmation
-        embed = discord.Embed(
-            title="🎮 وضع الألعاب",
-            description="تم تفعيل وضع الألعاب لهذه الغرفة. لن يتم إغلاقها تلقائيًا عند خروج الأعضاء منها.",
-            color=discord.Color.green()
-        )
+        # تحديث حالة الغرفة
+        self.temp_channels[str(voice_channel.id)]["game_mode"] = new_mode
         
-        embed.add_field(
-            name="📝 ملاحظة",
-            value="لإغلاق الغرفة يدويًا، استخدم زر 'إغلاق الغرفة' في غرفة التحكم.",
-            inline=False
-        )
+        # حفظ التغييرات
+        self._save_channels()
+        
+        # تحديث اسم الغرفة إذا لزم الأمر
+        try:
+            if new_mode:
+                # إضافة رمز للغرفة
+                if not voice_channel.name.startswith("🎮"):
+                    await voice_channel.edit(name=f"🎮 {voice_channel.name}")
+            else:
+                # إزالة الرمز إذا كان موجودًا
+                if voice_channel.name.startswith("🎮"):
+                    await voice_channel.edit(name=voice_channel.name[2:].strip())
+        except Exception as e:
+            print(f"Error updating channel name: {e}")
+        
+        # إرسال تأكيد
+        if new_mode:
+            embed = discord.Embed(
+                title="🎮 وضع الألعاب",
+                description="تم تفعيل وضع الألعاب للغرفة الصوتية. لن تُحذف هذه الغرفة تلقائيًا عند فراغها.",
+                color=discord.Color.green()
+            )
+        else:
+            embed = discord.Embed(
+                title="🔄 الوضع العادي",
+                description="تم تعطيل وضع الألعاب. ستعود الغرفة إلى الوضع الطبيعي وستُحذف تلقائيًا عند فراغها.",
+                color=discord.Color.blue()
+            )
         
         await ctx.send(embed=embed)
 

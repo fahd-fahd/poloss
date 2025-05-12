@@ -296,77 +296,221 @@ class MusicControls(commands.Cog):
     @commands.command(
         name="صوت",
         aliases=["vol", "volume", "الصوت"],
-        description="ضبط مستوى الصوت"
+        description="ضبط مستوى الصوت أو الانضمام إلى قناة صوتية"
     )
-    async def volume(self, ctx, level: int = None):
+    async def volume(self, ctx, channel_or_volume: str = None):
         """
-        ضبط مستوى الصوت
+        ضبط مستوى الصوت أو الانضمام إلى قناة صوتية
         
         المعلمات:
-            level (int): مستوى الصوت (0-100)
+            channel_or_volume (str, اختياري): مستوى الصوت (1-100) أو معرف قناة صوتية للانضمام إليها
         
         أمثلة:
-            !صوت 50
-            !volume 75
+            !صوت 50 - لضبط مستوى الصوت على 50%
+            !صوت - لعرض مستوى الصوت الحالي وأزرار التحكم
         """
-        # التحقق من وجود تشغيل حالي
+        # التحقق مما إذا كانت المعلمة معرف قناة صوتية (للانضمام إليها)
+        if channel_or_volume and channel_or_volume.isdigit() and len(channel_or_volume) > 10:
+            # المعلمة هي معرف قناة صوتية، محاولة الانضمام إليها
+            try:
+                # البحث عن القناة الصوتية
+                voice_channel = self.bot.get_channel(int(channel_or_volume))
+                if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
+                    embed = discord.Embed(
+                        title="❌ خطأ",
+                        description="لم يتم العثور على القناة الصوتية المحددة.",
+                        color=discord.Color.red()
+                    )
+                    return await ctx.send(embed=embed)
+                
+                # التحقق مما إذا كان البوت متصلًا بالفعل بقناة صوتية في هذا الخادم
+                try:
+                    # محاولة الحصول على مشغل موجود باستخدام طرق متعددة
+                    player = None
+                    try:
+                        # جرب wavelink.nodes أولا
+                        node = wavelink.nodes.get_node()
+                        if node:
+                            player = node.get_player(ctx.guild.id)
+                    except AttributeError:
+                        pass
+                    
+                    if not player:
+                        try:
+                            # جرب wavelink.Pool
+                            node = wavelink.Pool.get_best_node()
+                            if node:
+                                player = node.get_player(ctx.guild.id)
+                        except (AttributeError, Exception):
+                            pass
+                    
+                    if not player:
+                        try:
+                            # جرب NodePool (الإصدار القديم)
+                            player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
+                        except (AttributeError, Exception):
+                            pass
+                    
+                    # إذا وجدنا لاعبًا، قم بنقله إلى القناة الجديدة
+                    if player:
+                        await player.move_to(voice_channel)
+                        action = "تم الانتقال إلى"
+                    else:
+                        # إذا لم يكن هناك لاعب، انضم إلى القناة
+                        player = await voice_channel.connect(cls=wavelink.Player)
+                        action = "تم الانضمام إلى"
+                    
+                    # ضبط مستوى الصوت الافتراضي
+                    try:
+                        await player.set_volume(70)
+                    except:
+                        pass
+                    
+                    # تخزين قناة النص للإشعارات
+                    player.text_channel = ctx.channel
+                    
+                    embed = discord.Embed(
+                        title="🔊 الاتصال الصوتي",
+                        description=f"{action} القناة الصوتية: **{voice_channel.name}**",
+                        color=discord.Color.green()
+                    )
+                    embed.add_field(
+                        name="💡 تلميح",
+                        value="يمكنك الآن استخدام أوامر تشغيل الموسيقى مثل `!تشغيل` أو `!بحث`",
+                        inline=False
+                    )
+                    await ctx.send(embed=embed)
+                    return
+                except Exception as e:
+                    embed = discord.Embed(
+                        title="❌ خطأ",
+                        description=f"حدث خطأ أثناء محاولة الانضمام إلى القناة الصوتية: {str(e)}",
+                        color=discord.Color.red()
+                    )
+                    return await ctx.send(embed=embed)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ خطأ",
+                    description=f"حدث خطأ أثناء محاولة البحث عن القناة الصوتية: {str(e)}",
+                    color=discord.Color.red()
+                )
+                return await ctx.send(embed=embed)
+        
+        # في حالة عدم توفير معرف قناة، نتعامل مع الأمر كأمر لضبط الصوت
+        
+        # محاولة الحصول على مشغل موجود
+        player = None
         try:
-            # استخدام wavelink.nodes بدلاً من NodePool
+            # جرب wavelink.nodes أولا
             node = wavelink.nodes.get_node()
             if node:
                 player = node.get_player(ctx.guild.id)
-            else:
-                player = None
-        except AttributeError:
-            # للإصدارات القديمة
+        except (AttributeError, Exception):
+            pass
+        
+        if not player:
             try:
+                # جرب wavelink.Pool
+                node = wavelink.Pool.get_best_node()
+                if node:
+                    player = node.get_player(ctx.guild.id)
+            except (AttributeError, Exception):
+                pass
+        
+        if not player:
+            try:
+                # جرب NodePool (الإصدار القديم)
                 player = wavelink.NodePool.get_node().get_player(ctx.guild.id)
-            except Exception:
-                player = None
+            except (AttributeError, Exception):
+                pass
         
         if not player:
             embed = discord.Embed(
                 title="❌ خطأ",
-                description="البوت ليس متصلاً بأي قناة صوتية.",
+                description="البوت غير متصل بأي قناة صوتية. استخدم `!صوت` للاتصال أولاً.",
                 color=discord.Color.red()
+            )
+            embed.add_field(
+                name="💡 تلميح",
+                value="انضم إلى قناة صوتية أولاً ثم استخدم الأمر `!صوت` مرة أخرى.",
+                inline=False
             )
             return await ctx.send(embed=embed)
         
-        # إذا لم يتم تحديد مستوى، عرض المستوى الحالي مع أزرار التحكم
-        if level is None:
-            embed = discord.Embed(
-                title="🔊 مستوى الصوت",
-                description=f"المستوى الحالي: **{player.volume}%**\n"
-                          f"استخدم الأزرار أدناه لضبط مستوى الصوت أو أرسل `!صوت [رقم]` لتحديد قيمة محددة.",
-                color=discord.Color.blue()
-            )
+        # إذا تم تمرير قيمة رقمية، فهذا يعني تغيير مستوى الصوت
+        if channel_or_volume and channel_or_volume.isdigit():
+            level = int(channel_or_volume)
             
-            embed.add_field(name="الحالة", value=self._create_volume_bar(player.volume), inline=False)
+            # التحقق من صحة المستوى
+            if level < 0 or level > 1000:
+                embed = discord.Embed(
+                    title="❌ خطأ",
+                    description="مستوى الصوت يجب أن يكون بين 0 و 1000.",
+                    color=discord.Color.red()
+                )
+                return await ctx.send(embed=embed)
             
-            volume_view = VolumeView(self.bot, ctx, player)
-            return await ctx.send(embed=embed, view=volume_view)
-        
-        # التحقق من صحة مستوى الصوت
-        if not 0 <= level <= 100:
-            embed = discord.Embed(
-                title="❌ خطأ",
-                description="يجب أن يكون مستوى الصوت بين 0 و 100.",
-                color=discord.Color.red()
-            )
-            return await ctx.send(embed=embed)
-        
-        # ضبط مستوى الصوت
-        await player.set_volume(level)
-        
-        embed = discord.Embed(
-            title="🔊 مستوى الصوت",
-            description=f"تم ضبط مستوى الصوت على **{level}%**",
-            color=discord.Color.green()
-        )
-        
-        embed.add_field(name="الحالة", value=self._create_volume_bar(level), inline=False)
-        
-        await ctx.send(embed=embed)
+            # تغيير مستوى الصوت
+            try:
+                await player.set_volume(level)
+                
+                embed = discord.Embed(
+                    title="🔊 تغيير الصوت",
+                    description=f"تم ضبط مستوى الصوت على **{level}%**",
+                    color=discord.Color.green()
+                )
+                
+                # إضافة شريط الصوت
+                embed.add_field(
+                    name="مستوى الصوت",
+                    value=self._create_volume_bar(level),
+                    inline=False
+                )
+                
+                await ctx.send(embed=embed)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ خطأ",
+                    description=f"حدث خطأ أثناء محاولة تغيير مستوى الصوت: {str(e)}",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+        else:
+            # عرض مستوى الصوت الحالي مع أزرار التحكم
+            try:
+                current_volume = player.volume
+                
+                embed = discord.Embed(
+                    title="🔊 مستوى الصوت",
+                    description=f"المستوى الحالي: **{current_volume}%**",
+                    color=discord.Color.blue()
+                )
+                
+                # إضافة شريط الصوت
+                embed.add_field(
+                    name="مستوى الصوت",
+                    value=self._create_volume_bar(current_volume),
+                    inline=False
+                )
+                
+                # إضافة تعليمات الاستخدام
+                embed.add_field(
+                    name="💡 تلميح",
+                    value="استخدم الأزرار أدناه لضبط مستوى الصوت، أو استخدم الأمر `!صوت [مستوى]` لتحديد قيمة محددة.",
+                    inline=False
+                )
+                
+                # إنشاء واجهة التحكم بالصوت
+                view = VolumeView(self.bot, ctx, player)
+                
+                await ctx.send(embed=embed, view=view)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ خطأ",
+                    description=f"حدث خطأ أثناء محاولة عرض مستوى الصوت: {str(e)}",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
     
     @commands.command(
         name="تكرار",
@@ -456,7 +600,7 @@ class MusicControls(commands.Cog):
     
     @commands.command(
         name="مسح_القائمة",
-aliases=["مسح", "تفريغ_القائمة"],
+        aliases=["مسح", "تفريغ_القائمة"],
         description="مسح قائمة الأغاني"
     )
     async def clear_queue(self, ctx):
