@@ -1,6 +1,6 @@
 server: # REST and WS server
   port: 2333
-  address: 127.0.0.1
+  address: 0.0.0.0 # Change to 0.0.0.0 to accept connections from anywhere
 lavalink:
   server:
     password: "youshallnotpass"
@@ -11,23 +11,30 @@ lavalink:
       twitch: true
       vimeo: true
       http: true
-      local: false
-    bufferDurationMs: 400
-    youtubePlaylistLoadLimit: 6 # Number of pages at 100 each
-    playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
+      local: true # Enable local files
+    bufferDurationMs: 600 # Increased buffer for better playback
+    youtubePlaylistLoadLimit: 10 # Increased to handle larger playlists
+    playerUpdateInterval: 3 # More frequent updates
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
-    #ratelimit:
-      #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
-      #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
-      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
-      #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
-      #retryLimit: -1 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
+    # Retry settings for YouTube and SoundCloud
+    youtube:
+      maximumLoadRetries: 5
+      retryDelay: 3000
+    soundcloud:
+      maximumLoadRetries: 3
+      retryDelay: 1500
+    # HTTP settings
+    httpConfig:
+      followRedirects: true
+      connectTimeout: 10000
+      readTimeout: 10000
+      userAgent: "LavaLink/1.0"
 
 metrics:
   prometheus:
-    enabled: false
+    enabled: true
     endpoint: /metrics
 
 sentry:
@@ -43,3 +50,6 @@ logging:
   level:
     root: INFO
     lavalink: INFO
+    # More detailed logging for specific components
+    com.sedmelluq.discord.lavaplayer: INFO
+    com.sedmelluq.lava.common: INFO
